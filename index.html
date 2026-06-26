@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Granite Pro ERP - Smart Billing V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <style>
+        /* ৩ ডিজিট দেখার জন্য ইনপুট সাইজ */
+        input { font-size: 13px !important; }
+        .table-input { width: 100%; border: none; outline: none; text-align: center; background: transparent; padding: 4px 0; }
+        .table-input:focus { background-color: #f0f7ff; border-radius: 4px; }
+        
+        /* প্রিন্ট সেটআপ (A4 Multi-page) */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; margin: 0; padding: 0; }
+            .main-container { width: 100%; shadow: none; border: none; }
+            table { page-break-inside: auto; width: 100%; border: 1px solid #ccc !important; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
+            .print-header { display: block !important; }
+        }
+
+        .row-del-btn { visibility: hidden; color: red; font-weight: bold; cursor: pointer; }
+        tr:hover .row-del-btn { visibility: visible; }
+    </style>
+</head>
+<body class="bg-slate-200 min-h-screen">
+
+<script>
+    // --- ADMIN CONFIGURATION ---
+    const ADMIN_UPI = "9851713487@ybl"; // আপনার UPI ID এখানে দিন
+    const ADMIN_WHATSAPP = "919434332264"; // আপনার WhatsApp নম্বর (91 সহ)
+    const ADMIN_PASS = "6254"; // অ্যাডমিন প্যানেল পাসওয়ার্ড
+    const REF_BONUS = 7; // রেফার বোনাস দিন
+</script>
+
+<!-- 1. AUTH OVERLAY (ডিভাইস লক ও সাবস্ক্রিপশন) -->
+<div id="auth-overlay" class="fixed inset-0 bg-blue-950 z-[200] flex items-center justify-center p-4 no-print text-center">
+    <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl">
+        <div id="login-box">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 italic">Granite Pro Login</h2>
+            <input type="number" id="userPhone" placeholder="Mobile Number" class="w-full border-2 p-4 rounded-2xl mb-4 text-center font-bold text-xl outline-none focus:border-blue-600">
+            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">লগইন করুন</button>
+        </div>
+        <div id="payment-box" class="hidden">
+            <h2 class="text-xl font-bold text-red-600 mb-2">Expired</h2>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="prepPay(99, 30)" class="border p-3 rounded-xl text-xs font-bold">Monthly ₹99</button>
+                <button onclick="prepPay(999, 365)" class="border p-3 rounded-xl text-xs font-bold">Yearly ₹999</button>
+            </div>
+            <div id="qr-area" class="hidden">
+                <p class="text-xs font-bold text-green-700">Pay: ₹<span id="uniqueAmt">0</span></p>
+                <img id="qrImg" src="" class="mx-auto w-40 h-40 border my-2">
+                <input type="file" id="payFile" class="text-[10px] mb-4">
+                <button onclick="submitPayWithWA()" id="payBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Submit Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. MAIN ERP APP -->
+<div id="main-app" class="max-w-4xl mx-auto bg-white min-h-screen relative blur-md pointer-events-none transition-all duration-700 shadow-2xl">
+    
+    <!-- Compact Header -->
+    <div class="bg-blue-900 text-white p-4 flex justify-between items-center no-print">
+        <div class="flex flex-col leading-tight">
+            <h1 id="mainTitle" class="text-lg font-bold uppercase tracking-tighter">Granite Pro</h1>
+            <span class="text-[8px] opacity-50 uppercase">Smart Inventory System</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="shareApp()" class="bg-green-500 px-3 py-1 rounded text-[10px] font-bold">SHARE</button>
+            <button onclick="showAdmin()" class="bg-white/10 px-3 py-1 rounded text-[10px] font-bold">ADMIN</button>
+            <button onclick="logout()" class="bg-red-500/20 px-3 py-1 rounded text-[10px] font-bold">EXIT</button>
+        </div>
+    </div>
+
+    <!-- Client Info Section -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-slate-50 border-b text-[10px] font-bold uppercase text-gray-500">
+        <div>ID: <input type="text" id="docNo" value="101" class="w-full bg-transparent border-b outline-none text-black"></div>
+        <div>Date: <input type="date" id="invDate" class="w-full bg-transparent border-b outline-none text-black"></div>
+        <div>Name: <input type="text" id="partyName" placeholder="Client Name" class="w-full bg-transparent border-b outline-none text-black"></div>
+        <div>Phone: <input type="number" id="partyPhone" placeholder="Mobile No" class="w-full bg-transparent border-b outline-none text-black"></div>
+    </div>
+
+    <!-- Calculation Settings -->
+    <div class="p-2 flex flex-wrap gap-4 items-center justify-between bg-white border-b no-print">
+        <select id="mode" class="border-2 p-1 rounded font-bold text-[10px] outline-none" onchange="toggleMode()">
+            <option value="custom">Size (Custom Range)</option>
+            <option value="factory">Factory (Custom Less)</option>
+        </select>
+        <div id="custom-inputs" class="flex gap-2 text-[10px] font-bold text-gray-400">
+            LS>= <input type="number" id="ls_val" value="72" class="w-10 border rounded px-1" oninput="calculateAll()">
+            US>= <input type="number" id="us_val" value="49" class="w-10 border rounded px-1" oninput="calculateAll()">
+            BS>= <input type="number" id="bs_val" value="36" class="w-10 border rounded px-1" oninput="calculateAll()">
+        </div>
+        <div id="factory-inputs" class="hidden flex gap-4 text-[10px] font-bold text-blue-600">
+            L-Less: <input type="number" id="lLess" value="3" class="w-10 border rounded px-1" oninput="calculateAll()">
+            W-Less: <input type="number" id="wLess" value="2" class="w-10 border rounded px-1" oninput="calculateAll()">
+        </div>
+    </div>
+
+    <!-- MAIN TABLE -->
+    <div class="overflow-x-auto min-h-[400px]">
+        <table class="w-full border-collapse border border-gray-200">
+            <thead class="bg-blue-900 text-white text-[9px] uppercase font-bold text-center">
+                <tr>
+                    <th class="p-1 border w-6">Sl</th>
+                    <th class="p-1 border">Item Description</th>
+                    <th class="p-1 border w-16">L (Inch)</th>
+                    <th class="p-1 border w-16">W (Inch)</th>
+                    <th class="p-1 border w-12">Qty</th>
+                    <th class="p-1 border w-20">Sft</th>
+                    <th class="p-1 border w-20">Rate</th>
+                    <th class="p-1 border w-24">Amount</th>
+                    <th class="p-1 border no-print w-6"></th>
+                </tr>
+            </thead>
+            <tbody id="billBody" class="text-sm"></tbody>
+        </table>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 no-print border-t">
+        <button class="bg-slate-700 text-white py-2 font-bold text-[9px] uppercase rounded">Granite</button>
+        <button onclick="toggleOthers()" id="othersBtn" class="bg-cyan-700 text-white py-2 font-bold text-[9px] uppercase rounded transition">Others</button>
+        <button onclick="cycleDoc()" id="docBtn" class="bg-green-600 text-white py-2 font-bold text-[9px] uppercase rounded">Invoice</button>
+        <button ondblclick="bulkRate()" class="bg-orange-500 text-white py-2 font-bold text-[9px] uppercase rounded shadow-sm">Rate List (D-Click)</button>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <div id="rangeSummary" class="flex gap-4 italic text-[10px] font-bold text-gray-400 mb-2 border-b pb-1">
+                <span id="ls_txt">LS: 0/0.00</span>
+                <span id="us_txt">US: 0/0.00</span>
+                <span id="bs_txt">BS: 0/0.00</span>
+            </div>
+            <p id="wordSum" class="text-[10px] font-bold text-gray-500 italic">Zero Rupees Only</p>
+        </div>
+        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center shadow-inner border border-slate-200">
+            <div class="text-center">
+                <p class="text-[8px] font-bold text-gray-400 uppercase">Total Sft</p>
+                <p id="totalSft" class="text-xl font-bold">0.00</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[8px] font-bold text-gray-400 uppercase">Grand Total</p>
+                <p id="grandTotal" class="text-3xl font-black text-blue-900 tracking-tighter">₹0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Save/Print -->
+    <div class="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto bg-white/90 p-4 flex gap-3 no-print z-[100] border-t">
+        <button onclick="saveRecord()" id="saveBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg text-xs">SAVE DATA</button>
+        <button onclick="window.print()" class="flex-1 bg-black text-white font-bold py-3 rounded-xl shadow-lg text-xs uppercase">Print A4 PDF</button>
+        <button onclick="toggleHistory()" class="bg-orange-500 text-white px-4 rounded-xl font-bold text-xs">📜 History</button>
+    </div>
+</div>
+
+<!-- SIDEBARS (HISTORY & ADMIN) -->
+<div id="history-panel" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-[150] translate-x-full transition-transform duration-500 no-print">
+    <div class="p-6 bg-blue-900 text-white flex justify-between">
+        <h2 class="font-bold text-sm">TRANSACTION HISTORY</h2>
+        <button onclick="toggleHistory()" class="text-2xl">×</button>
+    </div>
+    <div class="p-4 overflow-y-auto h-full pb-20">
+        <input type="number" id="hSearch" placeholder="Search Customer Mobile" class="w-full border-2 p-3 rounded-xl mb-4 font-bold outline-none" oninput="searchHistory()">
+        <div id="hList" class="space-y-3"></div>
+    </div>
+</div>
+
+<div id="admin-panel" class="fixed inset-0 bg-white z-[300] hidden p-6 overflow-y-auto no-print">
+    <div class="flex justify-between items-center border-b pb-4 mb-6">
+        <h2 class="text-2xl font-bold uppercase">Admin Approval</h2>
+        <button onclick="document.getElementById('admin-panel').classList.add('hidden')" class="bg-red-500 text-white px-4 py-1 rounded text-xs font-bold">EXIT</button>
+    </div>
+    <div id="admin-list" class="space-y-4"></div>
+</div>
+
+<script>
+// --- GLOBAL STATE ---
+let isOthers = false;
+let currentUPhone = localStorage.getItem('uPhone');
+let currentUDevId = localStorage.getItem('uDevId') || Math.random().toString(36).substring(7);
+if(!localStorage.getItem('uDevId')) localStorage.setItem('uDevId', currentUDevId);
+
+// --- FIREBASE INIT ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAQtkVNXuADha7ek5bqh_REfEkdYpXdNgM",
+  authDomain: "invoice-b26b4.firebaseapp.com",
+  projectId: "invoice-b26b4",
+  storageBucket: "invoice-b26b4.firebasestorage.app",
+  messagingSenderId: "896139772822",
+  appId: "1:896139772822:web:7fcc05fb70a05434a3d3b7",
+  measurementId: "G-DCCZFMM9RM"
+}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+if(currentUPhone) validateUser();
+
+// --- 1. AUTH & DEVICE LOCK ---
+async function handleLogin() {
+    const p = document.getElementById('userPhone').value;
+    if(p.length < 10) return alert("Enter valid phone");
+    currentUPhone = p;
+    localStorage.setItem('uPhone', p);
+    validateUser();
+}
+
+async function validateUser() {
+    const doc = await db.collection("users").doc(currentUPhone).get();
+    if(doc.exists) {
+        const d = doc.data();
+        if(d.deviceId && d.deviceId !== currentUDevId) {
+            alert("⚠️ Account already logged in on another device!");
+            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
+        } else if(!d.deviceId) {
+            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
+        }
+        if(new Date(d.expiry) < new Date()) showPaymentUI();
+        else unlockApp();
+    } else {
+        showPaymentUI();
+    }
+}
+
+function unlockApp() {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('blur-md', 'pointer-events-none');
+}
+
+function showPaymentUI() {
+    document.getElementById('login-box').classList.add('hidden');
+    document.getElementById('payment-box').classList.remove('hidden');
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+
+// --- 2. PAYMENT & WHATSAPP ---
+function prepPay(base, days) {
+    const last3 = currentUPhone.slice(-3);
+    const unique = (base - 1) + (last3 / 1000);
+    document.getElementById('uniqueAmt').innerText = unique.toFixed(3);
+    const upiLink = `upi://pay?pa=${ADMIN_UPI}&pn=GranitePro&am=${unique.toFixed(3)}&cu=INR&tn=Ref_${currentUPhone}`;
+    document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+    document.getElementById('qr-area').classList.remove('hidden');
+    window.tempDays = days;
+}
+
+async function submitPayWithWA() {
+    const file = document.getElementById('payFile').files[0];
+    if(!file) return alert("Select screenshot");
+    const btn = document.getElementById('payBtn');
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    try {
+        const ref = storage.ref(`payments/${currentUPhone}_${Date.now()}`);
+        await ref.put(file);
+        const url = await ref.getDownloadURL();
+        await db.collection("pending").add({
+            phone: currentUPhone,
+            amount: document.getElementById('uniqueAmt').innerText,
+            days: window.tempDays,
+            screenshot: url,
+            status: 'pending',
+            deviceId: currentUDevId,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=I paid ₹${document.getElementById('uniqueAmt').innerText}. Please approve.`, '_blank');
+        location.reload();
+    } catch(e) { alert(e.message); btn.innerText = "Submit Payment"; btn.disabled = false; }
+}
+
+// --- 3. CORE BILLING LOGIC ---
+window.onload = () => { addRow(); document.getElementById('invDate').valueAsDate = new Date(); };
+
+function addRow() {
+    const tbody = document.getElementById('billBody');
+    const sl = tbody.rows.length + 1;
+    const tr = document.createElement('tr');
+    tr.className = "border-b text-center h-8";
+    tr.innerHTML = `
+        <td class="p-1 border text-[9px] font-bold bg-slate-50">${sl}</td>
+        <td class="border"><input type="text" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="checkRow(this)" placeholder="Name" class="table-input item-name font-bold"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input l-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input w-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input q-val"></td>
+        <td class="border bg-slate-50 font-bold sft-val text-blue-900">0.00</td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input r-val font-bold text-blue-700"></td>
+        <td class="border bg-slate-50 font-bold amt-val text-slate-800">0.00</td>
+        <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="row-del-btn">×</button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+// ENTER KEY NAVIGATION
+function handleNav(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const inputs = Array.from(document.querySelectorAll('.table-input'));
+        const idx = inputs.indexOf(e.target);
+        if (idx < inputs.length - 1) {
+            inputs[idx + 1].focus();
+        } else {
+            addRow();
+            setTimeout(() => {
+                const newInputs = Array.from(document.querySelectorAll('.table-input'));
+                newInputs[idx + 1].focus();
+            }, 10);
+        }
+    }
+}
+
+function checkRow(i) {
+    const r = i.closest('tr');
+    const hasVal = i.value.trim() !== "";
+    r.querySelectorAll('input:not(.item-name)').forEach(input => input.disabled = !hasVal);
+}
+
+function copyUp(i) {
+    const prev = i.closest('tr').previousElementSibling;
+    if(prev) {
+        const prevInput = prev.cells[i.parentElement.cellIndex].querySelector('input');
+        if(prevInput) { i.value = prevInput.value; checkRow(i); calculateAll(); }
+    }
+}
+
+function toggleOthers() {
+    isOthers = !isOthers;
+    document.getElementById('othersBtn').classList.toggle('bg-red-600', isOthers);
+    document.querySelectorAll('.l-val, .w-val').forEach(el => el.classList.toggle('hidden', isOthers));
+    calculateAll();
+}
+
+function bulkRate() {
+    const r = prompt("Enter rate for all empty rows:");
+    if(r) {
+        document.querySelectorAll('.r-val').forEach(i => { if(!i.value) i.value = r; });
+        calculateAll();
+    }
+}
+
+function calculateAll() {
+    const rows = document.querySelectorAll('#billBody tr');
+    let tS = 0, tA = 0;
+    let ls_s = 0, ls_p = 0, us_s = 0, us_p = 0, bs_s = 0, bs_p = 0;
+    
+    const mode = document.getElementById('mode').value;
+    const LS = parseFloat(document.getElementById('ls_val').value) || 0;
+    const US = parseFloat(document.getElementById('us_val').value) || 0;
+    const BS = parseFloat(document.getElementById('bs_val').value) || 0;
+    const LL = parseFloat(document.getElementById('lLess').value) || 0;
+    const WL = parseFloat(document.getElementById('wLess').value) || 0;
+
+    rows.forEach((r, i) => {
+        const n = r.querySelector('.item-name').value;
+        const L = parseFloat(r.querySelector('.l-val').value) || 0;
+        const W = parseFloat(r.querySelector('.w-val').value) || 0;
+        const Q = parseFloat(r.querySelector('.q-val').value) || 0;
+        const R = parseFloat(r.querySelector('.r-val').value) || 0;
+
+        let sft = 0;
+        if(isOthers) {
+            r.querySelector('.sft-val').innerText = "-";
+            const amt = Q * R;
+            r.querySelector('.amt-val').innerText = amt.toFixed(2);
+            tA += amt;
+        } else {
+            sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
+            const amt = sft * R;
+            r.querySelector('.sft-val').innerText = sft.toFixed(2);
+            r.querySelector('.amt-val').innerText = amt.toFixed(2);
+            if(sft > 0) {
+                tS += sft; tA += amt;
+                if(L >= LS) { ls_s += sft; ls_p += Q; }
+                else if(L >= US) { us_s += sft; us_p += Q; }
+                else if(L >= BS) { bs_s += sft; bs_p += Q; }
+            }
+        }
+        if(i === rows.length-1 && n && Q > 0 && R > 0) addRow();
+    });
+
+    document.getElementById('totalSft').innerText = tS.toFixed(2);
+    document.getElementById('grandTotal').innerText = '₹' + Math.round(tA);
+    document.getElementById('ls_txt').innerText = `LS: ${ls_p}/${ls_s.toFixed(2)}`;
+    document.getElementById('us_txt').innerText = `US: ${us_p}/${us_s.toFixed(2)}`;
+    document.getElementById('bs_txt').innerText = `BS: ${bs_p}/${bs_s.toFixed(2)}`;
+    updateWords(Math.round(tA));
+}
+
+function updateWords(n) {
+    const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
+    const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
+    function inWords (num) {
+        if ((num = num.toString()).length > 9) return 'Overflow';
+        const m = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!m) return ''; var str = '';
+        str += (m[1] != 0) ? (a[Number(m[1])] || b[m[1][0]] + ' ' + a[m[1][1]]) + 'Crore ' : '';
+        str += (m[2] != 0) ? (a[Number(m[2])] || b[m[2][0]] + ' ' + a[m[2][1]]) + 'Lakh ' : '';
+        str += (m[3] != 0) ? (a[Number(m[3])] || b[m[3][0]] + ' ' + a[m[3][1]]) + 'Thousand ' : '';
+        str += (m[4] != 0) ? (a[Number(m[4])] || b[m[4][0]] + ' ' + a[m[4][1]]) + 'Hundred ' : '';
+        str += (m[5] != 0) ? (a[Number(m[5])] || b[m[5][0]] + ' ' + a[n[5][1]]) + 'Rupees Only' : 'Rupees Only';
+        return str;
+    }
+    document.getElementById('wordSum').innerText = n > 0 ? inWords(n) : "Zero Rupees Only";
+}
+
+// (বাকি সব History, Save এবং Admin লজিকগুলো আগের কোড অনুযায়ী কাজ করবে)
+async function saveRecord() {
+    const cP = document.getElementById('partyPhone').value;
+    if(cP.length < 10) return alert("Phone required");
+    const items = [];
+    document.querySelectorAll('#billBody tr').forEach(r => {
+        const n = r.querySelector('.item-name').value;
+        if(n) items.push({ n, l: r.querySelector('.l-val').value, w: r.querySelector('.w-val').value, q: r.querySelector('.q-val').value, r: r.querySelector('.r-val').value, sft: r.querySelector('.sft-val').innerText });
+    });
+    await db.collection("records").add({
+        owner: currentUPhone, customer: cP, name: document.getElementById('partyName').value,
+        type: document.getElementById('docBtn').innerText, date: document.getElementById('invDate').value,
+        total: document.getElementById('grandTotal').innerText, items, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert("Saved!");
+}
+
+async function searchHistory() {
+    const p = document.getElementById('hSearch').value;
+    if(p.length < 4) return;
+    const snap = await db.collection("records").where("owner", "==", currentUPhone).where("customer", "==", p).get();
+    const list = document.getElementById('hList');
+    list.innerHTML = "";
+    snap.forEach(doc => {
+        const d = doc.data();
+        list.innerHTML += `<div class="p-3 bg-slate-50 border-l-4 border-blue-900 text-xs shadow-sm rounded-lg">
+            <p class="font-bold">${d.type} | ${d.date}</p>
+            <p>${d.name}</p>
+            <button onclick="loadRec('${doc.id}')" class="bg-blue-600 text-white px-3 py-1 rounded mt-2">LOAD</button>
+        </div>`;
+    });
+}
+
+async function loadRec(id) {
+    const d = (await db.collection("records").doc(id).get()).data();
+    document.getElementById('partyPhone').value = d.customer;
+    document.getElementById('partyName').value = d.name;
+    document.getElementById('invDate').value = d.date;
+    document.getElementById('billBody').innerHTML = "";
+    d.items.forEach(it => {
+        addRow(); const r = document.getElementById('billBody').lastElementChild;
+        r.querySelector('.item-name').value = it.n; r.querySelector('.l-val').value = it.l;
+        r.querySelector('.w-val').value = it.w; r.querySelector('.q-val').value = it.q;
+        r.querySelector('.r-val').value = it.r; r.querySelectorAll('input').forEach(i => i.disabled = false);
+    });
+    calculateAll(); toggleHistory();
+}
+
+function toggleHistory() { document.getElementById('history-panel').classList.toggle('translate-x-full'); }
+function showAdmin() { if(prompt("Admin Password:") === ADMIN_PASS) { document.getElementById('admin-panel').classList.remove('hidden'); loadAdmin(); } }
+async function loadAdmin() {
+    const snap = await db.collection("pending").where("status", "==", "pending").get();
+    const list = document.getElementById('admin-list'); list.innerHTML = "";
+    snap.forEach(doc => {
+        const d = doc.data();
+        list.innerHTML += `<div class="bg-slate-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
+            <div class="text-xs font-bold"><p>Phone: ${d.phone}</p><p>Amt: ₹${d.amount}</p><a href="${d.screenshot}" target="_blank" class="text-blue-600 underline font-bold">Receipt</a></div>
+            <button onclick="approve('${d.phone}', ${d.days}, '${doc.id}', '${d.deviceId}')" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase">Approve</button>
+        </div>`;
+    });
+}
+async function approve(phone, days, dId, devId) {
+    const exp = new Date(); exp.setDate(exp.getDate() + days);
+    await db.collection("users").doc(phone).set({ expiry: exp.toISOString(), deviceId: devId }, {merge:true});
+    await db.collection("pending").doc(dId).update({status: 'approved'});
+    alert("Approved!"); loadAdmin();
+}
+async function shareApp() {
+    const s = { title: 'Granite Pro', text: 'স্মার্ট গ্রানাইট বিলিং অ্যাপ। রেফারেল: ' + currentUPhone, url: window.location.href };
+    if (navigator.share) await navigator.share(s); else window.open(`https://wa.me/?text=${encodeURIComponent(s.text + " " + s.url)}`);
+}
+</script>
+</body>
+</html>
