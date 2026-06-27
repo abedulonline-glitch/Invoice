@@ -90,31 +90,35 @@
         </div>
     </div>
 
-    <div class="overflow-x-auto min-h-[400px]">
-        <table class="w-full border-collapse border border-gray-200 text-center">
-            <thead class="bg-blue-900 text-white text-[9px] uppercase">
-                <tr>
-                    <th class="p-1 border w-6">Sl</th>
-                    <th class="p-1 border">Item Description</th>
-                    <th class="p-1 border w-16">L</th>
-                    <th class="p-1 border w-16">W</th>
-                    <th class="p-1 border w-12">Qty</th>
-                    <th class="p-1 border w-20">Sft</th>
-                    <th class="p-1 border w-20">Rate</th>
-                    <th class="p-1 border w-24">Amount</th>
-                    <th class="p-1 border no-print w-6"></th>
-                </tr>
-            </thead>
-            <tbody id="billBody"></tbody>
-        </table>
-    </div>
+    <!-- MAIN TABLE -->
+<div class="overflow-x-auto">
+    <table class="w-full border-collapse border border-gray-200 text-center">
+        <thead class="bg-blue-900 text-white text-[9px] uppercase">
+            <tr>
+                <th class="p-1 border w-6">Sl</th>
+                <th class="p-1 border">Item Description</th>
+                <th class="p-1 border w-16">L</th>
+                <th class="p-1 border w-16">W</th>
+                <th class="p-1 border w-12">Qty</th>
+                <th class="p-1 border w-20">Sft</th>
+                <th class="p-1 border w-20">Rate</th>
+                <th class="p-1 border w-24">Amount</th>
+                <th class="p-1 border no-print w-6"></th>
+            </tr>
+        </thead>
+        <tbody id="billBody">
+            <!-- এখানে রো গুলো আসবে -->
+        </tbody>
+    </table>
 
-    <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 no-print">
+    <!-- বাটনগুলোকে এখানে নিয়ে আসা হয়েছে যাতে এগুলো টেবিলের সাথে নিচে নামে -->
+    <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 no-print border-t border-b border-gray-200">
         <button class="bg-slate-700 text-white py-2 font-bold text-[9px] uppercase rounded">Granite</button>
         <button onclick="toggleOthers()" id="othersBtn" class="bg-cyan-700 text-white py-2 font-bold text-[9px] uppercase rounded">Others</button>
-        <button onclick="cycleDoc()" id="docBtn" class="bg-green-600 text-white py-2 font-bold text-[9px] uppercase rounded">Invoice</button>
-        <button ondblclick="bulkRate()" class="bg-orange-500 text-white py-2 font-bold text-[9px] uppercase rounded shadow-sm">Rate (D-Click)</button>
+        <button onclick="cycleDoc()" id="docBtn" class="bg-green-600 text-white py-2 font-bold text-[9px] uppercase rounded text-white">Invoice</button>
+        <button ondblclick="bulkRate()" class="bg-orange-500 text-white py-2 font-bold text-[9px] uppercase rounded shadow-sm text-white">Rate </button>
     </div>
+</div>
 
     <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
