@@ -248,7 +248,7 @@ async function submitPayWithWA() {
 
 window.onload = () => { addRow(); document.getElementById('invDate').valueAsDate = new Date(); };
 
-function addRow() {
+    function addRow() {
     const tbody = document.getElementById('billBody');
     const sl = tbody.rows.length + 1;
     const tr = document.createElement('tr');
@@ -258,13 +258,17 @@ function addRow() {
         <td class="border"><input type="text" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="checkRow(this)" placeholder="Name" class="table-input item-name font-bold"></td>
         <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input l-val ${isOthers?'hidden':''}"></td>
         <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input w-val ${isOthers?'hidden':''}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input q-val font-bold"></td>
+        
+        <!-- এখানে value="1" অ্যাড করা হয়েছে -->
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input q-val font-bold" value="1"></td>
+        
         <td class="border bg-slate-50 font-bold sft-val text-blue-900">0.00</td>
         <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input r-val font-bold text-blue-700"></td>
-        <td class="border bg-slate-50 font-bold amt-val text-slate-800">0.00</td>
+        <td class="border bg-slate-50 font-bold amt-val text-slate-800 tracking-tighter">0.00</td>
         <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="text-red-500 font-bold">×</button></td>
     `;
     tbody.appendChild(tr);
+    calculateAll(); // রো যোগ করার সাথে সাথে হিসাব আপডেট করার জন্য
 }
 
 function handleNav(e) {
