@@ -256,27 +256,57 @@ function prepPay(base, days) {
 
 async function submitPayWithWA() {
     const file = document.getElementById('payFile').files[0];
-    if(!file) return alert("Select screenshot");
+    const amt = document.getElementById('uniqueAmt').innerText;
+    const ref = document.getElementById('refBy').value.trim();
+    
+    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
+
     const btn = document.getElementById('payBtn');
-    btn.innerText = "Processing...";
+    btn.innerText = "Uploading Screenshot...";
     btn.disabled = true;
 
+    // ১. ইমেজ ডাটা তৈরি করা (ImgBB এর জন্য)
+    const formData = new FormData();
+    formData.append("image", file);
+
     try {
-        const ref = storage.ref(`payments/${currentUPhone}_${Date.now()}`);
-        await ref.put(file);
-        const url = await ref.getDownloadURL();
-        await db.collection("pending").add({
-            phone: currentUPhone,
-            amount: document.getElementById('uniqueAmt').innerText,
-            days: window.tempDays,
-            screenshot: url,
-            status: 'pending',
-            deviceId: currentUDevId,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        // ২. সরাসরি ImgBB এ আপলোড (বিনা মূল্যে)
+        const imgbbResponse = await fetch("https://api.imgbb.com/1/upload?key=e3a407922fbe5d85c268959df2247960", {
+            method: "POST",
+            body: formData
         });
-        window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=I paid ₹${document.getElementById('uniqueAmt').innerText}. Please approve.`, '_blank');
-        location.reload();
-    } catch(e) { alert(e.message); btn.innerText = "Submit Payment"; btn.disabled = false; }
+
+        const imgbbResult = await imgbbResponse.json();
+
+        if (imgbbResult.success) {
+            const url = imgbbResult.data.url; // আপলোড করা ছবির লিঙ্ক
+
+            // ৩. ফায়ারস্টোরে ডাটা সেভ করা (আগের মতোই)
+            await db.collection("pending").add({
+                phone: uPhone,
+                amount: amt,
+                days: window.tempDays,
+                screenshot: url, // এখানে ছবির সরাসরি লিঙ্ক থাকবে
+                referredBy: ref || null,
+                status: 'pending',
+                deviceId: uDevId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // ৪. হোয়াটসঅ্যাপে মেসেজ পাঠানো
+            const msg = `Hello Admin, I paid ₹${amt} for ${window.tempDays} days plan. %0APhone: ${uPhone}%0AReferral Code: ${ref || 'None'}`;
+            window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
+            
+            alert("সাবমিট হয়েছে! হোয়াটসঅ্যাপ চেক করুন।");
+            location.reload();
+        } else {
+            throw new Error("ImgBB Upload Failed");
+        }
+    } catch(e) { 
+        alert("Error: " + e.message); 
+        btn.innerText = "SUBMIT & WHATSAPP"; 
+        btn.disabled = false; 
+    }
 }
 
 // --- 3. CORE BILLING LOGIC ---
