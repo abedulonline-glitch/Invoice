@@ -361,8 +361,9 @@ function copyUp(i) {
 
 function calculateAll() {
     const rows = document.querySelectorAll('#billBody tr');
-    let tS = 0, tA = 0, rawTS = 0;
+    let tS = 0, tA = 0, tP = 0, rawTS = 0; // tP = Total Pcs (নতুন)
     let ls_s = 0, ls_p = 0, us_s = 0, us_p = 0, bs_s = 0, bs_p = 0;
+    
     const mode = document.getElementById('mode').value;
     const LS = parseFloat(document.getElementById('ls_val').value) || 0;
     const US = parseFloat(document.getElementById('us_val').value) || 0;
@@ -381,34 +382,40 @@ function calculateAll() {
         let actualRawSft = (L * W * Q) / 144;
 
         if(isOthers) {
+            // --- Others মোড লজিক ---
             r.querySelector('.sft-val').innerText = "-";
             const amt = Q * R;
             r.querySelector('.amt-val').innerText = amt.toFixed(2);
-            tA += amt;
+            if(amt > 0) {
+                tA += amt;
+                tP += Q; // Others মোডে পিস যোগ করা
+            }
         } else {
+            // --- Granite/Marble মোড লজিক ---
             sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
             const amt = sft * R;
             r.querySelector('.sft-val').innerText = sft.toFixed(2);
             r.querySelector('.amt-val').innerText = amt.toFixed(2);
+
             if(sft > 0) {
-                tS += sft; tA += amt; rawTS += actualRawSft;
+                tS += sft;
+                tA += amt;
+                tP += Q; // পিস যোগ করা
+                rawTS += actualRawSft; // ফ্যাক্টরি বেনিফিটের জন্য আসল মাপ রাখা
+
+                // Custom Range (LS/US/BS) বিভাজন
                 if(L >= LS) { ls_s += sft; ls_p += Q; }
                 else if(L >= US) { us_s += sft; us_p += Q; }
                 else if(L >= BS) { bs_s += sft; bs_p += Q; }
             }
         }
         
-        // Auto Add Row even if Rate is empty
- // calculateAll ফাংশনের একদম শেষের অংশটুকু এভাবে আপডেট করুন
-        
-        // --- সংশোধিত Auto Add Row Logic ---
+        // --- Auto Add Row Logic (আপনার দেওয়া শর্ত অনুযায়ী) ---
         const isLastRow = (i === rows.length - 1);
-        const hasMeasurement = (L > 0 || isOthers); // Others মোড হলে অথবা L এ মান থাকলে
-        const hasRate = (R > 0); // রেট দেওয়া থাকলে
+        const hasMeasurement = (L > 0 || isOthers); 
+        const hasRate = (R > 0); 
 
-        // শুধু নাম কপি হলে হবে না, ইউজারকে অবশ্যই মাপ অথবা রেট দিতে হবে
         if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
-            // একটি ছোট চেক যাতে একই সাথে অনেক রো তৈরি না হয়
             if (!window.isAddingRow) {
                 window.isAddingRow = true;
                 setTimeout(() => {
@@ -419,21 +426,33 @@ function calculateAll() {
         }
     });
 
+    // --- UI আপডেট সেকশন ---
+    
+    // ১. মেইন সামারি (Pcs, Sft, Grand Total)
+    const pcsDisplay = document.getElementById('totalPcs');
+    if(pcsDisplay) pcsDisplay.innerText = tP; // Total Pcs আপডেট
+    
     document.getElementById('totalSft').innerText = tS.toFixed(2);
     document.getElementById('grandTotal').innerText = '₹' + Math.round(tA);
+
+    // ২. LS, US, BS টেক্সট আপডেট
     document.getElementById('ls_txt').innerText = `LS: ${ls_p}/${ls_s.toFixed(2)}`;
     document.getElementById('us_txt').innerText = `US: ${us_p}/${us_s.toFixed(2)}`;
     document.getElementById('bs_txt').innerText = `BS: ${bs_p}/${bs_s.toFixed(2)}`;
 
+    // ৩. Factory Mode বেনিফিট (Mb/Mbp) আপডেট
     if(mode === 'factory') {
         const MB = rawTS - tS;
         const MBP = rawTS > 0 ? (MB / rawTS) * 100 : 0;
-        document.getElementById('mb_txt').innerText = MB.toFixed(2);
-        document.getElementById('mbp_txt').innerText = MBP.toFixed(2);
+        const mbDisplay = document.getElementById('mb_txt');
+        const mbpDisplay = document.getElementById('mbp_txt');
+        if(mbDisplay) mbDisplay.innerText = MB.toFixed(2);
+        if(mbpDisplay) mbpDisplay.innerText = MBP.toFixed(2);
     }
+
+    // ৪. কথায় টাকা আপডেট
     updateWords(Math.round(tA));
 }
-
 function updateWords(n) {
     const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
     const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
