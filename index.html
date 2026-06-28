@@ -296,7 +296,7 @@ function prepPay(base, days) {
 async function submitPayWithImgBB() {
     const file = document.getElementById('payFile').files[0];
     const amt = document.getElementById('uniqueAmt').innerText;
-    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
+    if(!file) return alert("Select screenshot");
 
     const btn = document.getElementById('payBtn');
     btn.innerText = "Processing...";
@@ -308,9 +308,11 @@ async function submitPayWithImgBB() {
     try {
         const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
         const resData = await res.json();
-        
+
         if (resData.success) {
-            const screenLink = resData.data.url;
+            const screenLink = resData.data.url; // ইমেজের লিঙ্ক
+            
+            // ফায়ারবেসে ডাটা সেভ
             const docRef = await db.collection("pending").add({
                 phone: uPhone,
                 amount: amt,
@@ -321,16 +323,22 @@ async function submitPayWithImgBB() {
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // এডমিনের জন্য ম্যাজিক লিঙ্ক তৈরি
-            const magicLink = `${window.location.origin}/?approve=${uPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
+            // এডমিনের জন্য এক ক্লিকে অ্যাপ্রুভ করার লিঙ্ক তৈরি
+            const currentUrl = window.location.href.split('?')[0]; // মেইন ডোমেইন লিঙ্ক
+            const magicLink = `${currentUrl}?approve=${uPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
 
+            // হোয়াটসঅ্যাপ মেসেজ ফরম্যাট
             const msg = `⚡ *New Payment Alert* ⚡%0A--------------------------%0A📱 *Phone:* ${uPhone}%0A💰 *Amount:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Click to Approve:* ${magicLink}`;
             
             window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
-            alert("পেমেন্ট সাবমিট হয়েছে! হোয়াটসঅ্যাপ চেক করুন।");
+            alert("Submitted! WhatsApp Open... স্ক্রিনশট পাঠিয়ে দিন।");
             location.reload();
         }
-    } catch(e) { alert("Error: " + e.message); btn.innerText = "Submit Payment"; btn.disabled = false; }
+    } catch(e) { 
+        alert("Upload error"); 
+        btn.innerText = "Submit Payment"; 
+        btn.disabled = false; 
+    }
 }
     
 function addRow() {
