@@ -280,6 +280,49 @@ function addRow() {
     // এখানে calculateAll() কল করার দরকার নেই, এতে লুপ হওয়ার ভয় থাকে না
 }
 
+function prepareAndPrint() {
+    const rows = document.querySelectorAll('#billBody tr');
+    const mode = document.getElementById('mode').value;
+
+    rows.forEach(row => {
+        const name = row.querySelector('.item-name').value.trim();
+        const L = parseFloat(row.querySelector('.l-val').value) || 0;
+        const W = parseFloat(row.querySelector('.w-val').value) || 0;
+        const R = parseFloat(row.querySelector('.r-val').value) || 0;
+
+        let isIncomplete = false;
+
+        if (name === "") {
+            isIncomplete = true; // নাম না থাকলে হাইড হবে
+        } else if (mode === 'custom' || mode === 'factory') {
+            // মেজারমেন্ট মোডে L, W অথবা Rate ০ থাকলে হাইড হবে
+            if (L <= 0 || W <= 0 || R <= 0) {
+                isIncomplete = true;
+            }
+        } else if (isOthers) {
+            // Others মোডে শুধু রেট ০ থাকলে হাইড হবে
+            if (R <= 0) {
+                isIncomplete = true;
+            }
+        }
+
+        // অসম্পূর্ণ রো-তে 'no-print' ক্লাস যোগ করা
+        if (isIncomplete) {
+            row.classList.add('no-print');
+        } else {
+            row.classList.remove('no-print');
+        }
+    });
+
+    // সব অসম্পূর্ণ রো হাইড করার পর প্রিন্ট ডায়ালগ ওপেন হবে
+    window.print();
+
+    // প্রিন্ট শেষ হওয়ার পর আবার সব রো ফিরিয়ে আনা (ইউজারের এডিট করার সুবিধার জন্য)
+    setTimeout(() => {
+        rows.forEach(row => row.classList.remove('no-print'));
+    }, 1000);
+}
+    
 function handleNav(e) {
     if (e.key === "Enter") {
         e.preventDefault();
