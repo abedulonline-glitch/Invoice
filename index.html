@@ -255,22 +255,28 @@ window.onload = () => { addRow(); document.getElementById('invDate').valueAsDate
 
 function addRow() {
     const tbody = document.getElementById('billBody');
-    const sl = tbody.rows.length + 1;
+    const rows = tbody.querySelectorAll('tr');
+    let prevItemName = "";
+
+    // যদি আগে কোনো রো থাকে, তবে শেষ রো-র নাম কপি করবে
+    if (rows.length > 0) {
+        prevItemName = rows[rows.length - 1].querySelector('.item-name').value;
+    }
+
+    const sl = rows.length + 1;
     const tr = document.createElement('tr');
     tr.className = "border-b text-center h-8";
+    
+    // টেম্পলেটের ভেতরে value="${prevItemName}" বসানো হয়েছে এবং 
+    // যদি নাম থাকে তবে পরের ঘরগুলো অটো আনলক (disabled সরিয়ে) রাখা হয়েছে
     tr.innerHTML = `
         <td class="p-1 border text-[9px] font-black bg-slate-50">${sl}</td>
-        <!-- Item Name এ ডাবল ক্লিক কপি -->
-        <td class="border"><input type="text" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="checkRow(this)" placeholder="Item" class="table-input item-name font-bold"></td>
-        <!-- L এ ডাবল ক্লিক কপি -->
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input l-val ${isOthers?'hidden':''}"></td>
-        <!-- W এ ডাবল ক্লিক কপি -->
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" disabled class="table-input w-val ${isOthers?'hidden':''}"></td>
-        
-        <!-- বাকিগুলোতে ডাবল ক্লিক কপি নেই -->
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input q-val font-bold" value="1"></td>
+        <td class="border"><input type="text" onkeydown="handleNav(event)" oninput="checkRow(this)" placeholder="Item" class="table-input item-name font-bold" value="${prevItemName}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input l-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input w-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input q-val font-bold" value="1"></td>
         <td class="border bg-slate-50 font-black sft-val text-blue-900">0.00</td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" disabled class="table-input r-val font-black text-blue-700"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input r-val font-black text-blue-700"></td>
         <td class="border bg-slate-50 font-black amt-val text-slate-800">0.00</td>
         <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="text-red-500 font-bold">×</button></td>
     `;
@@ -305,17 +311,14 @@ function checkRow(i) {
 
 // Global Copy Logic for Iten, L, W
 function copyUp(i) {
-    const row = i.closest('tr'); // বর্তমান রো
-    const prevRow = row.previousElementSibling; // ঠিক উপরের রো
-    
+    const row = i.closest('tr');
+    const prevRow = row.previousElementSibling;
     if (prevRow) {
-        const cellIdx = i.parentElement.cellIndex; // আপনি কোন কলামে ক্লিক করেছেন (Sl=0, Item=1, L=2, W=3)
-        const prevInput = prevRow.cells[cellIdx].querySelector('input'); // উপরের রো-র ওই একই কলামের ইনপুট
-        
+        const cellIdx = i.parentElement.cellIndex;
+        const prevInput = prevRow.cells[cellIdx].querySelector('input');
         if (prevInput && prevInput.value !== "") {
-            i.value = prevInput.value; // মান কপি করুন
-            checkRow(i); // যদি Item কপি হয় তবে পাশের ঘরগুলো আনলক হবে
-            calculateAll(); // হিসাব আপডেট করুন
+            i.value = prevInput.value;
+            calculateAll();
         }
     }
 }
