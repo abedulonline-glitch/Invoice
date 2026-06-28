@@ -303,6 +303,43 @@ function addRow() {
 }
 
 function prepareAndPrint() {
+    const rows = document.querySelectorAll('#billBody tr');
+    let printSl = 1; // প্রিন্ট কপিতে সিরিয়াল ১ থেকে শুরু করার জন্য
+
+    rows.forEach((row) => {
+        // এই রো-র অ্যামাউন্ট কত তা দেখা হচ্ছে (amt-val ক্লাস থেকে)
+        const amtCell = row.querySelector('.amt-val');
+        if (amtCell) {
+            // লেখা থেকে টাকা চিহ্ন বা কমা সরিয়ে শুধু সংখ্যায় রূপান্তর
+            const amtText = amtCell.innerText.replace(/[^\d.-]/g, ''); 
+            const amount = parseFloat(amtText) || 0;
+
+            // সলিড কন্ডিশন: অ্যামাউন্ট অবশ্যই ০ এর বেশি হতে হবে
+            if (amount > 0) {
+                row.classList.remove('no-print');
+                // প্রিন্ট কপিতে সিরিয়াল নম্বর ঠিক করা (১, ২, ৩...)
+                row.cells[0].innerText = printSl++;
+            } else {
+                // অ্যামাউন্ট ০ হলে বা অসম্পূর্ণ রো হলে সেটি হাইড হবে
+                row.classList.add('no-print');
+            }
+        }
+    });
+
+    // সাময়িকভাবে কিছু বাটন এবং অপ্রয়োজনীয় এলিমেন্ট হাইড করা (নিশ্চিত হওয়ার জন্য)
+    document.querySelector('.no-print').style.display = 'none';
+
+    // প্রিন্ট কমান্ড
+    window.print();
+
+    // প্রিন্ট শেষ হওয়ার পর ব্রাউজারে আবার সব রো আগের মতো ফিরিয়ে আনা
+    setTimeout(() => {
+        rows.forEach((row, index) => {
+            row.classList.remove('no-print');
+            row.cells[0].innerText = index + 1; // আসল সিরিয়াল নম্বর ফিরিয়ে আনা
+        });
+    }, 1000);
+}
 // ১. ম্যানুয়ালি রো অ্যাড করার ফাংশন
 function manualAddRow() {
     const tbody = document.getElementById('billBody');
