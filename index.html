@@ -303,81 +303,75 @@ function addRow() {
 }
 
 function prepareAndPrint() {
+// ১. ম্যানুয়ালি রো অ্যাড করার ফাংশন
+function manualAddRow() {
+    const tbody = document.getElementById('billBody');
+    const lastRow = tbody.lastElementChild;
+
+    if (lastRow) {
+        const name = lastRow.querySelector('.item-name').value.trim();
+        const L = parseFloat(lastRow.querySelector('.l-val').value) || 0;
+        const W = parseFloat(lastRow.querySelector('.w-val').value) || 0;
+        const mode = document.getElementById('mode').value;
+
+        // চেক করা হচ্ছে মাপ বা নাম ফাঁকা আছে কি না
+        let isIncomplete = false;
+        if (name === "") isIncomplete = true;
+        
+        if (mode !== 'others' && !isOthers) {
+            if (L <= 0 || W <= 0) isIncomplete = true;
+        }
+
+        if (isIncomplete) {
+            alert("আগের ঘরগুলো সঠিকভাবে ফিলাপ করুন (রেট বাদে সব ঘর জরুরি)");
+            return; // নতুন রো তৈরি হবে না
+        }
+    }
+    
+    // সব ঠিক থাকলে নতুন রো তৈরি হবে
+    addRow(); 
+    // নতুন রো-র প্রথম বক্সে ফোকাস করা
+    setTimeout(() => {
+        tbody.lastElementChild.querySelector('.item-name').focus();
+    }, 50);
+}
+
+// ২. calculateAll ফাংশন থেকে অটো-অ্যাড অংশটি মুছে দিন
+// আপনার calculateAll ফাংশনের ভেতর থেকে নিচের অংশটুকু ডিলিট করে দিন:
+/*
+if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
+    setTimeout(() => { addRow(); }, 100);
+}
+*/
+
+// ৩. প্রিন্ট লজিক আপডেট (রেট ছাড়াও মাপ থাকলে প্রিন্ট হবে)
+function prepareAndPrint() {
     const rows = document.querySelectorAll('#billBody tr');
-    let printSl = 1; // প্রিন্ট কপিতে সিরিয়াল ১ থেকে শুরু করার জন্য
+    let printSl = 1;
 
     rows.forEach((row) => {
-        // এই রো-র অ্যামাউন্ট কত তা দেখা হচ্ছে (amt-val ক্লাস থেকে)
-        const amtCell = row.querySelector('.amt-val');
-        if (amtCell) {
-            // লেখা থেকে টাকা চিহ্ন বা কমা সরিয়ে শুধু সংখ্যায় রূপান্তর
-            const amtText = amtCell.innerText.replace(/[^\d.-]/g, ''); 
-            const amount = parseFloat(amtText) || 0;
+        const sftText = row.querySelector('.sft-val').innerText;
+        const sft = parseFloat(sftText) || 0;
+        const name = row.querySelector('.item-name').value.trim();
+        const Q = parseFloat(row.querySelector('.q-val').value) || 0;
 
-            // সলিড কন্ডিশন: অ্যামাউন্ট অবশ্যই ০ এর বেশি হতে হবে
-            if (amount > 0) {
-                row.classList.remove('no-print');
-                // প্রিন্ট কপিতে সিরিয়াল নম্বর ঠিক করা (১, ২, ৩...)
-                row.cells[0].innerText = printSl++;
-            } else {
-                // অ্যামাউন্ট ০ হলে বা অসম্পূর্ণ রো হলে সেটি হাইড হবে
-                row.classList.add('no-print');
-            }
+        // কন্ডিশন: মাপ (Sft) ০ এর বেশি অথবা (Others মোডে নাম ও পিস থাকলে) প্রিন্ট হবে
+        if (sft > 0 || (isOthers && name !== "" && Q > 0)) {
+            row.classList.remove('no-print');
+            row.cells[0].innerText = printSl++;
+        } else {
+            row.classList.add('no-print');
         }
     });
 
-    // সাময়িকভাবে কিছু বাটন এবং অপ্রয়োজনীয় এলিমেন্ট হাইড করা (নিশ্চিত হওয়ার জন্য)
-    document.querySelector('.no-print').style.display = 'none';
-
-    // প্রিন্ট কমান্ড
     window.print();
 
-    // প্রিন্ট শেষ হওয়ার পর ব্রাউজারে আবার সব রো আগের মতো ফিরিয়ে আনা
     setTimeout(() => {
         rows.forEach((row, index) => {
             row.classList.remove('no-print');
-            row.cells[0].innerText = index + 1; // আসল সিরিয়াল নম্বর ফিরিয়ে আনা
+            row.cells[0].innerText = index + 1;
         });
     }, 1000);
-}
-    
-function handleNav(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        const inputs = Array.from(document.querySelectorAll('.table-input:not([disabled])'));
-        const idx = inputs.indexOf(e.target);
-        if (idx < inputs.length - 1) { inputs[idx + 1].focus(); }
-        else { 
-            const row = e.target.closest('tr');
-            if(row.querySelector('.item-name').value.trim() !== "") {
-                addRow(); 
-                setTimeout(() => {
-                    const newInputs = Array.from(document.querySelectorAll('.table-input:not([disabled])'));
-                    newInputs[idx + 1].focus();
-                }, 50);
-            }
-        }
-    }
-}
-
-function checkRow(i) {
-    const r = i.closest('tr');
-    const val = i.value.trim() !== "";
-    r.querySelectorAll('input:not(.item-name)').forEach(input => input.disabled = !val);
-}
-
-// Global Copy Logic for Iten, L, W
-function copyUp(i) {
-    const row = i.closest('tr');
-    const prevRow = row.previousElementSibling;
-    if (prevRow) {
-        const cellIdx = i.parentElement.cellIndex;
-        const prevInput = prevRow.cells[cellIdx].querySelector('input');
-        if (prevInput && prevInput.value !== "") {
-            i.value = prevInput.value;
-            calculateAll();
-        }
-    }
 }
 
 function calculateAll() {
