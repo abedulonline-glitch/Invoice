@@ -258,7 +258,6 @@ function addRow() {
     const rows = tbody.querySelectorAll('tr');
     let prevItemName = "";
 
-    // যদি আগে কোনো রো থাকে, তবে শেষ রো-র নাম কপি করবে
     if (rows.length > 0) {
         prevItemName = rows[rows.length - 1].querySelector('.item-name').value;
     }
@@ -266,9 +265,6 @@ function addRow() {
     const sl = rows.length + 1;
     const tr = document.createElement('tr');
     tr.className = "border-b text-center h-8";
-    
-    // টেম্পলেটের ভেতরে value="${prevItemName}" বসানো হয়েছে এবং 
-    // যদি নাম থাকে তবে পরের ঘরগুলো অটো আনলক (disabled সরিয়ে) রাখা হয়েছে
     tr.innerHTML = `
         <td class="p-1 border text-[9px] font-black bg-slate-50">${sl}</td>
         <td class="border"><input type="text" onkeydown="handleNav(event)" oninput="checkRow(this)" placeholder="Item" class="table-input item-name font-bold" value="${prevItemName}"></td>
@@ -281,7 +277,7 @@ function addRow() {
         <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="text-red-500 font-bold">×</button></td>
     `;
     tbody.appendChild(tr);
-    calculateAll();
+    // এখানে calculateAll() কল করার দরকার নেই, এতে লুপ হওয়ার ভয় থাকে না
 }
 
 function handleNav(e) {
@@ -363,9 +359,23 @@ function calculateAll() {
         }
         
         // Auto Add Row even if Rate is empty
-        if(i === rows.length-1 && n && Q > 0) {
-             // small delay to prevent double adding
-             setTimeout(() => { if(i === document.querySelectorAll('#billBody tr').length-1) addRow(); }, 100);
+ // calculateAll ফাংশনের একদম শেষের অংশটুকু এভাবে আপডেট করুন
+        
+        // --- সংশোধিত Auto Add Row Logic ---
+        const isLastRow = (i === rows.length - 1);
+        const hasMeasurement = (L > 0 || isOthers); // Others মোড হলে অথবা L এ মান থাকলে
+        const hasRate = (R > 0); // রেট দেওয়া থাকলে
+
+        // শুধু নাম কপি হলে হবে না, ইউজারকে অবশ্যই মাপ অথবা রেট দিতে হবে
+        if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
+            // একটি ছোট চেক যাতে একই সাথে অনেক রো তৈরি না হয়
+            if (!window.isAddingRow) {
+                window.isAddingRow = true;
+                setTimeout(() => {
+                    addRow();
+                    window.isAddingRow = false;
+                }, 100);
+            }
         }
     });
 
