@@ -680,6 +680,96 @@ function handleNav(e) {
         r.querySelectorAll('input:not(.item-name)').forEach(input => input.setAttribute('disabled', 'true'));
     }
 }
+
+// ১. মডাল ওপেন করার ফাংশন
+function openCustomerModal() {
+    // আগের নাম ও নম্বর যদি থাকে তা মডালে দেখাবে
+    document.getElementById('modal-name').value = document.getElementById('partyName').value;
+    document.getElementById('modal-phone').value = document.getElementById('partyPhone').value;
+    
+    document.getElementById('customer-modal').classList.remove('hidden');
+    document.getElementById('modal-name').focus();
+}
+
+// ২. মডাল বন্ধ করার ফাংশন
+function closeCustomerModal() {
+    document.getElementById('customer-modal').classList.add('hidden');
+}
+
+// ৩. মডাল থেকে তথ্য নিয়ে সেভ করার ফাংশন
+async function confirmAndSave() {
+    const name = document.getElementById('modal-name').value;
+    const phone = document.getElementById('modal-phone').value;
+
+    if(phone.length < 10) {
+        alert("দয়া করে সঠিক ১০ ডিজিটের মোবাইল নম্বর দিন");
+        return;
+    }
+
+    // মডালের ডাটা মেইন ইনপুটে পাঠিয়ে দেওয়া
+    document.getElementById('partyName').value = name;
+    document.getElementById('partyPhone').value = phone;
+
+    closeCustomerModal();
+    
+    // আসল সেভ ফাংশন কল করা (যেটি নিচে আছে)
+    executeActualSave();
+}
+
+// ৪. আপনার আগের saveRecord ফাংশনটি এভাবে আপডেট করুন
+async function saveRecord() {
+    const phone = document.getElementById('partyPhone').value;
+    
+    // যদি ফোন নম্বর না থাকে তবে মডাল খুলবে
+    if(!phone || phone.length < 10) {
+        openCustomerModal();
+    } else {
+        // নম্বর থাকলে সরাসরি সেভ হবে
+        executeActualSave();
+    }
+}
+
+// ৫. ফায়ারবেসে সেভ করার মূল কাজ
+async function executeActualSave() {
+    const btn = document.getElementById('saveBtn');
+    btn.innerText = "Saving to Cloud...";
+    btn.disabled = true;
+
+    const items = [];
+    document.querySelectorAll('#billBody tr').forEach(r => {
+        const n = r.querySelector('.item-name').value;
+        const amt = parseFloat(r.querySelector('.amt-val').innerText) || 0;
+        if(n && amt > 0) {
+            items.push({ 
+                n, 
+                l: r.querySelector('.l-val').value, 
+                w: r.querySelector('.w-val').value, 
+                q: r.querySelector('.q-val').value, 
+                r: r.querySelector('.r-val').value, 
+                sft: r.querySelector('.sft-val').innerText 
+            });
+        }
+    });
+
+    try {
+        await db.collection("records").add({
+            owner: currentUPhone,
+            customer: document.getElementById('partyPhone').value,
+            name: document.getElementById('partyName').value,
+            type: document.getElementById('docBtn').innerText,
+            date: document.getElementById('invDate').value,
+            total: document.getElementById('grandTotal').innerText,
+            items,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("✅ Cloud-এ সফলভাবে সেভ হয়েছে!");
+    } catch(e) { 
+        alert("Error: " + e.message); 
+    } finally {
+        btn.innerText = "SAVE DATA";
+        btn.disabled = false;
+    }
+}
     
 function cycleDoc() {
     const docs = ['Invoice', 'Estimate', 'Quotation', 'Challan', 'Mistri Bill'];
