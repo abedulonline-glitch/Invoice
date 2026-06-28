@@ -216,6 +216,18 @@
     .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
 </style>
 
+    /* তারিখের পাশের ডিফল্ট অ্যারো বা ক্যালেন্ডার আইকন লুকানোর জন্য */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+/* ফায়ারফক্স বা অন্যান্য ব্রাউজারের জন্য বাড়তি সুরক্ষা */
+input[type="date"] {
+    appearance: none;
+    -moz-appearance: none;
+}
+
 <script>
 // --- GLOBAL ---
 let isOthers = false;
