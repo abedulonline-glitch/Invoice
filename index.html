@@ -430,21 +430,6 @@ function calculateAll() {
                 else if(L >= BS) { bs_s += sft; bs_p += Q; }
             }
         }
-        
-        // --- Auto Add Row Logic (আপনার দেওয়া শর্ত অনুযায়ী) ---
-        const isLastRow = (i === rows.length - 1);
-        const hasMeasurement = (L > 0 || isOthers); 
-        const hasRate = (R > 0); 
-
-        if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
-            if (!window.isAddingRow) {
-                window.isAddingRow = true;
-                setTimeout(() => {
-                    addRow();
-                    window.isAddingRow = false;
-                }, 100);
-            }
-        }
     });
 
     // --- UI আপডেট সেকশন ---
