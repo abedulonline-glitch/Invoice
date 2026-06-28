@@ -549,8 +549,11 @@ function toggleMode() {
     const m = document.getElementById('mode').value;
     document.getElementById('custom-inputs').classList.toggle('hidden', m === 'factory');
     document.getElementById('factory-inputs').classList.toggle('hidden', m === 'custom');
+    
+    // সামারি বক্সগুলোর হাইড/শো লজিক
     document.getElementById('ls-summary-box').classList.toggle('hidden', m === 'factory');
     document.getElementById('factory-summary-box').classList.toggle('hidden', m === 'custom');
+    
     calculateAll();
 }
 
