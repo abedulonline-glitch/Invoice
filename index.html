@@ -293,11 +293,13 @@ function prepPay(base, days) {
     window.tempDays = days;
 }
 
-async function submitPayWithWA() {
+async function submitPayWithImgBB() {
     const file = document.getElementById('payFile').files[0];
-    if(!file) return alert("Select screenshot");
+    const amt = document.getElementById('uniqueAmt').innerText;
+    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
+
     const btn = document.getElementById('payBtn');
-    btn.innerText = "Uploading...";
+    btn.innerText = "Processing...";
     btn.disabled = true;
 
     const formData = new FormData();
@@ -306,24 +308,31 @@ async function submitPayWithWA() {
     try {
         const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
         const resData = await res.json();
+        
         if (resData.success) {
-            await db.collection("pending").add({
-                phone: currentUPhone,
-                amount: document.getElementById('uniqueAmt').innerText,
+            const screenLink = resData.data.url;
+            const docRef = await db.collection("pending").add({
+                phone: uPhone,
+                amount: amt,
                 days: window.tempDays,
-                screenshot: resData.data.url,
+                screenshot: screenLink,
                 status: 'pending',
-                deviceId: currentUDevId,
+                deviceId: uDevId,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=Paid ₹${document.getElementById('uniqueAmt').innerText}. Approve me.`, '_blank');
+
+            // এডমিনের জন্য ম্যাজিক লিঙ্ক তৈরি
+            const magicLink = `${window.location.origin}/?approve=${uPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
+
+            const msg = `⚡ *New Payment Alert* ⚡%0A--------------------------%0A📱 *Phone:* ${uPhone}%0A💰 *Amount:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Click to Approve:* ${magicLink}`;
+            
+            window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
+            alert("পেমেন্ট সাবমিট হয়েছে! হোয়াটসঅ্যাপ চেক করুন।");
             location.reload();
         }
-    } catch(e) { alert("Upload error"); btn.innerText = "Submit Payment"; btn.disabled = false; }
+    } catch(e) { alert("Error: " + e.message); btn.innerText = "Submit Payment"; btn.disabled = false; }
 }
-
-window.onload = () => { addRow(); document.getElementById('invDate').valueAsDate = new Date(); };
-
+    
 function addRow() {
     const tbody = document.getElementById('billBody');
     const rows = tbody.querySelectorAll('tr');
