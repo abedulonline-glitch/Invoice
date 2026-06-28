@@ -281,35 +281,38 @@ function addRow() {
 }
 
 function prepareAndPrint() {
+    // টেবিলের সব রো ধরুন
     const rows = document.querySelectorAll('#billBody tr');
-    let printSl = 1; // প্রিন্টের সময় নতুন সিরিয়াল মেইনটেইন করার জন্য
+    let printSl = 1; // প্রিন্টের সময় সিরিয়াল ঠিক রাখার জন্য
 
-    rows.forEach((row, index) => {
-        // এই রো-র অ্যামাউন্ট কত তা দেখা হচ্ছে
-        const amountStr = row.querySelector('.amt-val').innerText.replace('₹', '').trim();
-        const amount = parseFloat(amountStr) || 0;
+    rows.forEach((row) => {
+        // অ্যামাউন্ট লেখা ঘরটি খুঁজে বের করা
+        const amtCell = row.querySelector('.amt-val');
+        
+        if (amtCell) {
+            // লেখা থেকে টাকা চিহ্ন বা অন্য কিছু সরিয়ে শুধু সংখ্যায় রূপান্তর
+            const amtText = amtCell.innerText.replace(/[^\d.-]/g, ''); 
+            const amount = parseFloat(amtText) || 0;
 
-        // যদি অ্যামাউন্ট ০ হয়, তবে সেই রো প্রিন্ট হবে না
-        if (amount <= 0) {
-            row.classList.add('no-print');
-        } else {
-            row.classList.remove('no-print');
-            
-            // প্রিন্ট কপিতে সিরিয়াল নম্বর ঠিক করা (১, ২, ৩...)
-            // এটি সাময়িকভাবে Sl কলামের লেখা পরিবর্তন করবে
-            row.cells[0].innerText = printSl++;
+            // যদি অ্যামাউন্ট ০ এর বেশি হয় তবেই দেখাবে, নাহলে হাইড (no-print)
+            if (amount > 0) {
+                row.classList.remove('no-print');
+                // প্রিন্ট কপিতে সিরিয়াল নম্বর ১, ২, ৩ এভাবে সাজানো
+                row.cells[0].innerText = printSl++;
+            } else {
+                row.classList.add('no-print');
+            }
         }
     });
 
-    // প্রিন্ট ডায়ালগ ওপেন করা
+    // সব অসম্পূর্ণ রো হাইড করার পর প্রিন্ট কমান্ড
     window.print();
 
-    // প্রিন্ট শেষ হওয়ার ১ সেকেন্ড পর ব্রাউজারে সবকিছু আগের মতো করে দেওয়া
+    // প্রিন্ট শেষ হওয়ার পর ব্রাউজারে সব রো আগের মতো ফিরিয়ে আনা
     setTimeout(() => {
         rows.forEach((row, index) => {
             row.classList.remove('no-print');
-            // অরিজিনাল সিরিয়াল নম্বর ফিরিয়ে আনা
-            row.cells[0].innerText = index + 1;
+            row.cells[0].innerText = index + 1; // আসল সিরিয়াল ফিরিয়ে আনা
         });
     }, 1000);
 }
