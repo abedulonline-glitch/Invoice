@@ -282,44 +282,35 @@ function addRow() {
 
 function prepareAndPrint() {
     const rows = document.querySelectorAll('#billBody tr');
-    const mode = document.getElementById('mode').value;
+    let printSl = 1; // প্রিন্টের সময় নতুন সিরিয়াল মেইনটেইন করার জন্য
 
-    rows.forEach(row => {
-        const name = row.querySelector('.item-name').value.trim();
-        const L = parseFloat(row.querySelector('.l-val').value) || 0;
-        const W = parseFloat(row.querySelector('.w-val').value) || 0;
-        const R = parseFloat(row.querySelector('.r-val').value) || 0;
+    rows.forEach((row, index) => {
+        // এই রো-র অ্যামাউন্ট কত তা দেখা হচ্ছে
+        const amountStr = row.querySelector('.amt-val').innerText.replace('₹', '').trim();
+        const amount = parseFloat(amountStr) || 0;
 
-        let isIncomplete = false;
-
-        if (name === "") {
-            isIncomplete = true; // নাম না থাকলে হাইড হবে
-        } else if (mode === 'custom' || mode === 'factory') {
-            // মেজারমেন্ট মোডে L, W অথবা Rate ০ থাকলে হাইড হবে
-            if (L <= 0 || W <= 0 || R <= 0) {
-                isIncomplete = true;
-            }
-        } else if (isOthers) {
-            // Others মোডে শুধু রেট ০ থাকলে হাইড হবে
-            if (R <= 0) {
-                isIncomplete = true;
-            }
-        }
-
-        // অসম্পূর্ণ রো-তে 'no-print' ক্লাস যোগ করা
-        if (isIncomplete) {
+        // যদি অ্যামাউন্ট ০ হয়, তবে সেই রো প্রিন্ট হবে না
+        if (amount <= 0) {
             row.classList.add('no-print');
         } else {
             row.classList.remove('no-print');
+            
+            // প্রিন্ট কপিতে সিরিয়াল নম্বর ঠিক করা (১, ২, ৩...)
+            // এটি সাময়িকভাবে Sl কলামের লেখা পরিবর্তন করবে
+            row.cells[0].innerText = printSl++;
         }
     });
 
-    // সব অসম্পূর্ণ রো হাইড করার পর প্রিন্ট ডায়ালগ ওপেন হবে
+    // প্রিন্ট ডায়ালগ ওপেন করা
     window.print();
 
-    // প্রিন্ট শেষ হওয়ার পর আবার সব রো ফিরিয়ে আনা (ইউজারের এডিট করার সুবিধার জন্য)
+    // প্রিন্ট শেষ হওয়ার ১ সেকেন্ড পর ব্রাউজারে সবকিছু আগের মতো করে দেওয়া
     setTimeout(() => {
-        rows.forEach(row => row.classList.remove('no-print'));
+        rows.forEach((row, index) => {
+            row.classList.remove('no-print');
+            // অরিজিনাল সিরিয়াল নম্বর ফিরিয়ে আনা
+            row.cells[0].innerText = index + 1;
+        });
     }, 1000);
 }
     
