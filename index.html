@@ -257,6 +257,41 @@ async function handleLogin() {
     validateUser();
 }
 
+ // --- AUTO APPROVAL LISTENER ---
+(async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has('approve')) {
+        const phone = urlParams.get('approve');
+        const pid = urlParams.get('pid');
+        const days = parseInt(urlParams.get('days'));
+        const devId = urlParams.get('dev');
+
+        const pass = prompt(`Approve User: ${phone}\nEnter Admin Password to Confirm:`);
+        
+        if(pass === ADMIN_PASS) {
+            try {
+                const exp = new Date(); 
+                exp.setDate(exp.getDate() + days);
+                
+                // ১. ইউজারকে একটিভ করা
+                await db.collection("users").doc(phone).set({ 
+                    expiry: exp.toISOString(), 
+                    deviceId: devId 
+                }, {merge:true});
+                
+                // ২. পেন্ডিং স্ট্যাটাস আপডেট
+                await db.collection("pending").doc(pid).update({status: 'approved'});
+                
+                alert(`✅ SUCCESS! ${phone} এর একাউন্ট ${days} দিনের জন্য একটিভ করা হয়েছে।`);
+                window.location.href = window.location.origin; // প্যারামিটার মুছে ফেলা
+            } catch(e) { alert("Error: " + e.message); }
+        } else {
+            alert("Wrong Password!");
+            window.location.href = window.location.origin;
+        }
+    }
+})(); 
+
 async function validateUser() {
     const doc = await db.collection("users").doc(currentUPhone).get();
     if(doc.exists) {
