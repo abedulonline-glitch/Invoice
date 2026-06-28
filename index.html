@@ -278,22 +278,6 @@ function addRow() {
     calculateAll();
 }
 
-    function copyUp(i) {
-    const row = i.closest('tr'); // বর্তমান রো
-    const prevRow = row.previousElementSibling; // ঠিক উপরের রো
-    
-    if (prevRow) {
-        const cellIdx = i.parentElement.cellIndex; // আপনি কোন কলামে ক্লিক করেছেন (Sl=0, Item=1, L=2, W=3)
-        const prevInput = prevRow.cells[cellIdx].querySelector('input'); // উপরের রো-র ওই একই কলামের ইনপুট
-        
-        if (prevInput && prevInput.value !== "") {
-            i.value = prevInput.value; // মান কপি করুন
-            checkRow(i); // যদি Item কপি হয় তবে পাশের ঘরগুলো আনলক হবে
-            calculateAll(); // হিসাব আপডেট করুন
-        }
-    }
-}
-
 function handleNav(e) {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -321,15 +305,17 @@ function checkRow(i) {
 
 // Global Copy Logic for Iten, L, W
 function copyUp(i) {
-    const row = i.closest('tr');
-    const prevRow = row.previousElementSibling;
+    const row = i.closest('tr'); // বর্তমান রো
+    const prevRow = row.previousElementSibling; // ঠিক উপরের রো
+    
     if (prevRow) {
-        const cellIdx = i.parentElement.cellIndex;
-        const prevInput = prevRow.cells[cellIdx].querySelector('input');
-        if (prevInput) {
-            i.value = prevInput.value;
-            checkRow(i);
-            calculateAll();
+        const cellIdx = i.parentElement.cellIndex; // আপনি কোন কলামে ক্লিক করেছেন (Sl=0, Item=1, L=2, W=3)
+        const prevInput = prevRow.cells[cellIdx].querySelector('input'); // উপরের রো-র ওই একই কলামের ইনপুট
+        
+        if (prevInput && prevInput.value !== "") {
+            i.value = prevInput.value; // মান কপি করুন
+            checkRow(i); // যদি Item কপি হয় তবে পাশের ঘরগুলো আনলক হবে
+            calculateAll(); // হিসাব আপডেট করুন
         }
     }
 }
