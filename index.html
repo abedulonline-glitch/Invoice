@@ -345,28 +345,20 @@ function addRow() {
     const sl = rows.length + 1;
     const tr = document.createElement('tr');
     tr.className = "border-b text-center h-8";
-    
-    // Others মোড অন থাকলে এই রো-র L এবং W বক্স ইনভিজিবল হবে
-    const visibilityClass = isOthers ? "invisible" : "";
-    
     tr.innerHTML = `
         <td class="p-1 border text-[9px] font-black bg-slate-50">${sl}</td>
         <td class="border"><input type="text" onkeydown="handleNav(event)" oninput="checkRow(this)" placeholder="Item" class="table-input item-name font-bold" value="${prevItemName}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" class="table-input l-val ${visibilityClass}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" class="table-input w-val ${visibilityClass}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" class="table-input q-val font-bold" value="1"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input l-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input w-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input q-val font-bold" value="1"></td>
         <td class="border bg-slate-50 font-black sft-val text-blue-900">0.00</td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" class="table-input r-val font-black text-blue-700"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input r-val font-black text-blue-700"></td>
         <td class="border bg-slate-50 font-black amt-val text-slate-800">0.00</td>
         <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="text-red-500 font-bold">×</button></td>
     `;
     tbody.appendChild(tr);
-    
-    // নতুন রো-র প্রথম ঘরে ফোকাস
-    setTimeout(() => {
-        tr.querySelector('.item-name').focus();
-    }, 50);
-
+    // এখানে calculateAll() কল করার দরকার নেই, এতে লুপ হওয়ার ভয় থাকে না
+}
 
 function prepareAndPrint() {
     const rows = document.querySelectorAll('#billBody tr');
@@ -405,30 +397,47 @@ function prepareAndPrint() {
             row.cells[0].innerText = index + 1; // আসল সিরিয়াল নম্বর ফিরিয়ে আনা
         });
     }, 1000);
-
+}
 // ১. ম্যানুয়ালি রো অ্যাড করার ফাংশন
 function manualAddRow() {
-    // ১. Others মোড বন্ধ করে দেওয়া
-    isOthers = false;
-    const btn = document.getElementById('othersBtn');
-    btn.classList.remove('bg-red-600');
-    btn.innerText = "OTHERS";
-
     const tbody = document.getElementById('billBody');
     const lastRow = tbody.lastElementChild;
 
-    // ২. আগের রো পূরণ হয়েছে কি না চেক করা (আপনার শর্ত অনুযায়ী)
     if (lastRow) {
         const name = lastRow.querySelector('.item-name').value.trim();
-        if (name === "") {
-            alert("আগের আইটেমটির নাম লিখুন");
-            return;
+        const L = parseFloat(lastRow.querySelector('.l-val').value) || 0;
+        const W = parseFloat(lastRow.querySelector('.w-val').value) || 0;
+        const mode = document.getElementById('mode').value;
+
+        // চেক করা হচ্ছে মাপ বা নাম ফাঁকা আছে কি না
+        let isIncomplete = false;
+        if (name === "") isIncomplete = true;
+        
+        if (mode !== 'others' && !isOthers) {
+            if (L <= 0 || W <= 0) isIncomplete = true;
+        }
+
+        if (isIncomplete) {
+            alert("আগের ঘরগুলো সঠিকভাবে ফিলাপ করুন (রেট বাদে সব ঘর জরুরি)");
+            return; // নতুন রো তৈরি হবে না
         }
     }
-
-    // ৩. নতুন রো অ্যাড করা
-    addRow();
+    
+    // সব ঠিক থাকলে নতুন রো তৈরি হবে
+    addRow(); 
+    // নতুন রো-র প্রথম বক্সে ফোকাস করা
+    setTimeout(() => {
+        tbody.lastElementChild.querySelector('.item-name').focus();
+    }, 50);
 }
+
+// ২. calculateAll ফাংশন থেকে অটো-অ্যাড অংশটি মুছে দিন
+// আপনার calculateAll ফাংশনের ভেতর থেকে নিচের অংশটুকু ডিলিট করে দিন:
+/*
+if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
+    setTimeout(() => { addRow(); }, 100);
+}
+*/
 
 // ৩. প্রিন্ট লজিক আপডেট (রেট ছাড়াও মাপ থাকলে প্রিন্ট হবে)
 function prepareAndPrint() {
@@ -493,19 +502,11 @@ function calculateAll() {
             }
         } else {
             // --- Granite/Marble মোড লজিক ---
-            // calculateAll এর লুপের ভেতর যেখানে sft বের করেন সেখানে এই শর্তটি দিন:
-let sft = 0;
-const lInput = r.querySelector('.l-val');
+            sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
+            const amt = sft * R;
+            r.querySelector('.sft-val').innerText = sft.toFixed(2);
+            r.querySelector('.amt-val').innerText = amt.toFixed(2);
 
-if (lInput.classList.contains('invisible')) {
-    // যদি ইনপুট অদৃশ্য থাকে (Others রো), তবে Sft হবে ০
-    sft = 0;
-    r.querySelector('.sft-val').innerText = "-";
-} else {
-    // সাধারণ গ্রানাইট হিসাব
-    sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
-    r.querySelector('.sft-val').innerText = sft.toFixed(2);
-}
             if(sft > 0) {
                 tS += sft;
                 tA += amt;
@@ -653,16 +654,9 @@ function toggleMode() {
 
 function toggleOthers() {
     isOthers = !isOthers;
-    const btn = document.getElementById('othersBtn');
-    
-    if (isOthers) {
-        btn.classList.add('bg-red-600'); // মোড অন হলে লাল হবে
-        btn.innerText = "OTHERS ON";
-    } else {
-        btn.classList.remove('bg-red-600');
-        btn.innerText = "OTHERS";
-    }
-    // লক্ষ্য করুন: এখান থেকে global hidden লজিক সরিয়ে দেওয়া হয়েছে
+    document.getElementById('othersBtn').classList.toggle('bg-red-600', isOthers);
+    document.querySelectorAll('.l-val, .w-val').forEach(el => el.classList.toggle('hidden', isOthers));
+    calculateAll();
 }
 
 function bulkRate() {
