@@ -229,6 +229,39 @@ input[type="date"] {
 }
 </style>
 <script>
+// --- ADMIN MAGIC LINK HANDLER ---
+(async function() {
+    const params = new URLSearchParams(window.location.search);
+    if(params.has('admin_action')) {
+        const phone = params.get('phone');
+        const pid = params.get('pid');
+        const days = parseInt(params.get('days'));
+        const devId = params.get('dev');
+
+        // এডমিনকে অপশন দেওয়া হবে
+        const choice = prompt(`Manage User: ${phone}\n1. Approve Account\n2. Reject Payment\n\nEnter 1 or 2:`);
+
+        if(choice === "1") {
+            const pass = prompt("Confirm Admin Password to APPROVE:");
+            if(pass === ADMIN_PASS) {
+                const exp = new Date();
+                exp.setDate(exp.getDate() + days);
+                await db.collection("users").doc(phone).set({ expiry: exp.toISOString(), deviceId: devId }, {merge:true});
+                await db.collection("pending").doc(pid).update({status: 'approved'});
+                alert("✅ SUCCESS! Account Activated.");
+            } else { alert("Wrong Password!"); }
+        } 
+        else if(choice === "2") {
+            const pass = prompt("Confirm Admin Password to REJECT:");
+            if(pass === ADMIN_PASS) {
+                await db.collection("pending").doc(pid).update({status: 'rejected'});
+                alert("❌ Payment Rejected.");
+            } else { alert("Wrong Password!"); }
+        }
+        window.location.href = window.location.origin; // অ্যাপ ফ্রেশ লোড করবে
+    }
+})();
+    
 // --- GLOBAL ---
 let isOthers = false;
 let currentUPhone = localStorage.getItem('uPhone');
@@ -292,11 +325,10 @@ function prepPay(base, days) {
     document.getElementById('qr-area').classList.remove('hidden');
     window.tempDays = days;
 }
-
-async function submitPayWithImgBB() {
+async function submitPayWithWA() {
     const file = document.getElementById('payFile').files[0];
     const amt = document.getElementById('uniqueAmt').innerText;
-    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
+    if(!file) return alert("দয়া করে পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
 
     const btn = document.getElementById('payBtn');
     btn.innerText = "Processing...";
@@ -306,31 +338,46 @@ async function submitPayWithImgBB() {
     formData.append("image", file);
 
     try {
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
+        // ১. ImgBB এ ছবি আপলোড
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { 
+            method: "POST", 
+            body: formData 
+        });
         const resData = await res.json();
-        
+
         if (resData.success) {
             const screenLink = resData.data.url;
+            
+            // ২. ফায়ারবেসে ডাটা সেভ (Pending)
             const docRef = await db.collection("pending").add({
-                phone: uPhone,
+                phone: currentUPhone,
                 amount: amt,
                 days: window.tempDays,
                 screenshot: screenLink,
                 status: 'pending',
-                deviceId: uDevId,
+                deviceId: currentUDevId,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // এডমিনের জন্য ম্যাজিক লিঙ্ক তৈরি
-            const magicLink = `${window.location.origin}/?approve=${uPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
+            // ৩. ম্যাজিক লিঙ্ক তৈরি (Approve/Reject এর জন্য)
+            const currentUrl = window.location.href.split('?')[0];
+            const magicLink = `${currentUrl}?admin_action=1&phone=${currentUPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${currentUDevId}`;
 
-            const msg = `⚡ *New Payment Alert* ⚡%0A--------------------------%0A📱 *Phone:* ${uPhone}%0A💰 *Amount:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Click to Approve:* ${magicLink}`;
+            // ৪. হোয়াটসঅ্যাপ মেসেজ ফরম্যাট
+            const msg = `⚡ *New Payment Received* ⚡%0A--------------------------%0A📱 *User:* ${currentUPhone}%0A💰 *Amt:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Click to Manage (Approve/Reject):* ${magicLink}`;
             
             window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
-            alert("পেমেন্ট সাবমিট হয়েছে! হোয়াটসঅ্যাপ চেক করুন।");
+            alert("সাবমিট হয়েছে! হোয়াটসঅ্যাপ ওপেন করে স্ক্রিনশটটি পাঠিয়ে দিন।");
             location.reload();
+        } else {
+            alert("Image Upload Failed! Try again.");
+            btn.disabled = false;
         }
-    } catch(e) { alert("Error: " + e.message); btn.innerText = "Submit Payment"; btn.disabled = false; }
+    } catch(e) { 
+        alert("Error: " + e.message); 
+        btn.innerText = "Submit Payment"; 
+        btn.disabled = false; 
+    }
 }
     
 function addRow() {
