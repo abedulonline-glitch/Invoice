@@ -3,39 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Granite Pro ERP - Full Master</title>
+    <title>Granite Pro ERP - Smart Billing V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <style>
-        /* ৩ ডিজিট দেখার জন্য ফন্ট সাইজ */
-        input { font-size: 14px !important; font-weight: 600 !important; }
-        .table-input { width: 100%; border: none; outline: none; text-align: center; background: transparent; padding: 6px 0; }
-        .table-input:focus { background-color: #f0f7ff; border-radius: 4px; }
-        
-        /* প্রিন্ট রুলস */
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; margin: 0; padding: 0; }
-            table { width: 100%; border: 1px solid #000 !important; border-collapse: collapse; }
-            th, td { border: 1px solid #000 !important; }
+        input { font-size: 14px !important; font-weight: bold !important; }
+        .table-input { width: 100%; border: none; outline: none; text-align: center; background: transparent; padding: 5px 0; }
+        .table-input:focus { background-color: #f0f9ff; border-radius: 4px; }
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; } 
+            table { width: 100%; border: 1px solid #000; } 
             thead { display: table-header-group; }
         }
-
-        .row-del-btn { visibility: hidden; color: red; font-weight: bold; cursor: pointer; }
+        .row-del-btn { visibility: hidden; color: red; cursor: pointer; font-weight: bold; }
         tr:hover .row-del-btn { visibility: visible; }
-        
-        /* তারিখের ডিফল্ট আইকন সরানো */
-        input[type="date"]::-webkit-calendar-picker-indicator { display: none; -webkit-appearance: none; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade { animation: fadeIn 0.5s ease-in-out; }
     </style>
 </head>
-<body class="bg-slate-200 min-h-screen font-sans">
+<body class="bg-slate-200 min-h-screen">
 
 <script>
-    // --- ADMIN CONFIGURATION ---
+    // --- ADMIN CONFIGURATION (গিটহাব থেকে এখান থেকেই চেঞ্জ করতে পারবেন) ---
     const ADMIN_UPI = "9851713487@ybl"; 
     const ADMIN_WHATSAPP = "919434332264"; 
     const ADMIN_PASS = "6254"; 
@@ -43,49 +32,37 @@
     const IMGBB_API_KEY = "e3a407922fbe5d85c268959df2247960";
 </script>
 
-<!-- 1. AUTH SYSTEM (লগইন এবং পেমেন্ট) -->
+<!-- AUTH OVERLAY -->
 <div id="auth-overlay" class="fixed inset-0 bg-blue-950 z-[200] flex items-center justify-center p-4 no-print text-center">
-    <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl animate-fade">
-        
-        <!-- Step 1: Login -->
+    <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl">
         <div id="login-box">
-            <div class="text-4xl mb-4">🏠</div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2 italic">Granite ERP Pro</h2>
-            <p class="text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest">নম্বর দিয়ে আপনার একাউন্টে প্রবেশ করুন</p>
-            <input type="number" id="userPhone" placeholder="10 Digit Mobile No" class="w-full border-2 p-4 rounded-2xl mb-4 text-center font-bold text-xl outline-none focus:border-blue-600">
-            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">CONTINUE</button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 italic">Invoice Pro Login</h2>
+            <input type="number" id="userPhone" placeholder="Mobile Number" class="w-full border-2 p-4 rounded-2xl mb-4 text-center font-bold text-xl outline-none focus:border-blue-600">
+            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">লগইন করুন</button>
         </div>
-
-        <!-- Step 2: Payment -->
         <div id="payment-box" class="hidden">
             <h2 class="text-xl font-bold text-red-600 mb-2 uppercase">Subscription Expired</h2>
-            <p class="text-[10px] font-bold text-gray-400 mb-6 uppercase">মেয়াদ শেষ হয়েছে, নতুন প্ল্যান বাছাই করুন</p>
-            <div class="grid grid-cols-2 gap-3 mb-6">
-                <button onclick="prepPay(99, 30)" class="border-2 p-3 rounded-2xl text-xs font-bold hover:bg-blue-50 focus:border-blue-600 transition">Monthly<br><span class="text-blue-600 font-black">₹99</span></button>
-                <button onclick="prepPay(999, 365)" class="border-2 p-3 rounded-2xl text-xs font-bold hover:bg-blue-50 focus:border-blue-600 transition">Yearly<br><span class="text-blue-600 font-black">₹999</span></button>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="prepPay(99, 30)" class="border p-3 rounded-xl text-xs font-bold font-black">Monthly ₹99</button>
+                <button onclick="prepPay(999, 365)" class="border p-3 rounded-xl text-xs font-bold font-black">Yearly ₹999</button>
             </div>
             <div id="qr-area" class="hidden">
-                <p class="text-xs font-bold text-green-700 mb-2 italic underline">Pay Unique Amt: ₹<span id="uniqueAmt">0</span></p>
-                <img id="qrImg" src="" class="mx-auto w-40 h-40 border-4 border-white shadow-md rounded-lg mb-4">
-                <label class="block text-left text-[10px] font-bold text-gray-400 mb-1">UPLOAD SCREENSHOT:</label>
-                <input type="file" id="payFile" accept="image/*" class="w-full text-[10px] mb-4 border p-2 rounded-lg bg-gray-50">
-                <button onclick="submitPayWithImgBB()" id="payBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">SUBMIT & WHATSAPP</button>
+                <p class="text-xs font-bold text-green-700">Pay: ₹<span id="uniqueAmt">0</span></p>
+                <img id="qrImg" src="" class="mx-auto w-40 h-40 border my-2">
+                <input type="file" id="payFile" class="text-[10px] mb-4">
+                <button onclick="submitPayWithWA()" id="payBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-sm">Submit Payment</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 2. MAIN ERP APP UI -->
-<div id="main-app" class="max-w-4xl mx-auto bg-white min-h-screen relative blur-md pointer-events-none shadow-2xl transition-all duration-1000">
-    <!-- Header -->
-    <div class="bg-blue-900 text-white p-4 flex justify-between items-center no-print shadow-md">
-        <div class="flex flex-col">
-            <h1 id="mainTitle" class="text-lg font-bold uppercase tracking-tighter">Granite Pro</h1>
-            <span class="text-[8px] opacity-60 uppercase font-bold">Cloud Billing Solution</span>
-        </div>
+<!-- MAIN APP -->
+<div id="main-app" class="max-w-4xl mx-auto bg-white min-h-screen relative blur-md pointer-events-none shadow-2xl">
+    <div class="bg-blue-900 text-white p-4 flex justify-between items-center no-print">
+        <h1 id="mainTitle" class="text-lg font-bold uppercase tracking-tighter">Granite Pro</h1>
         <div class="flex gap-2">
-            <button onclick="shareApp()" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-[10px] font-bold shadow">SHARE</button>
-            <button id="adminBtn" onclick="showAdmin()" class="hidden bg-white/20 px-3 py-1 rounded text-[10px] font-bold uppercase">Admin Panel</button>
+            <button onclick="shareApp()" class="bg-green-500 px-3 py-1 rounded text-[10px] font-bold">SHARE</button>
+            <button onclick="showAdmin()" class="bg-white/10 px-3 py-1 rounded text-[10px] font-bold uppercase font-black">Admin</button>
             <button onclick="logout()" class="bg-red-500/20 px-3 py-1 rounded text-[10px] font-bold">EXIT</button>
         </div>
     </div>
@@ -95,16 +72,16 @@
         <div>ID: <input type="text" id="docNo" value="101" class="w-full bg-transparent border-b outline-none text-black"></div>
         <div>Date: <input type="date" id="invDate" class="w-full bg-transparent border-b outline-none text-black"></div>
         <div>Name: <input type="text" id="partyName" placeholder="Client Name" class="w-full bg-transparent border-b outline-none text-black font-black"></div>
-        <div>Phone: <input type="number" id="partyPhone" placeholder="Customer Mobile" class="w-full bg-transparent border-b outline-none text-black font-black"></div>
+        <div>Phone: <input type="number" id="partyPhone" placeholder="Mobile No" class="w-full bg-transparent border-b outline-none text-black font-black"></div>
     </div>
 
     <!-- Mode Selector -->
     <div class="p-2 flex justify-between bg-white border-b no-print">
-        <select id="mode" class="border p-1 rounded font-bold text-[10px] outline-none" onchange="toggleMode()">
+        <select id="mode" class="border p-1 rounded font-bold text-[10px]" onchange="toggleMode()">
             <option value="custom">Size (Custom Range)</option>
             <option value="factory">Factory (Custom Less)</option>
         </select>
-        <div id="custom-inputs" class="flex gap-2 text-[10px] font-bold text-gray-400">
+        <div id="custom-inputs" class="flex gap-2 text-[10px] font-bold">
             LS>= <input type="number" id="ls_val" value="72" class="w-10 border rounded px-1" oninput="calculateAll()">
             US>= <input type="number" id="us_val" value="49" class="w-10 border rounded px-1" oninput="calculateAll()">
             BS>= <input type="number" id="bs_val" value="36" class="w-10 border rounded px-1" oninput="calculateAll()">
@@ -134,7 +111,7 @@
             <tbody id="billBody"></tbody>
         </table>
         
-        <!-- Embedded Action Buttons -->
+        <!-- Embedded Buttons -->
         <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 no-print border-t border-b">
             <button onclick="manualAddRow()" class="bg-slate-700 text-white py-2 font-bold text-[9px] uppercase rounded">Add Item</button>
             <button onclick="toggleOthers()" id="othersBtn" class="bg-cyan-700 text-white py-2 font-bold text-[9px] uppercase rounded">Others</button>
@@ -143,75 +120,122 @@
         </div>
     </div>
 
-    <!-- Dynamic Summary -->
-    <div class="p-6">
-        <div id="ls-summary-box" class="flex gap-4 italic text-[10px] font-bold text-gray-400 mb-2 border-b pb-1">
-            <span id="ls_txt">LS: 0/0.00</span> <span id="us_txt">US: 0/0.00</span> <span id="bs_txt">BS: 0/0.00</span>
-        </div>
-        <div id="factory-summary-box" class="hidden flex gap-4 italic text-[10px] font-bold text-blue-600 mb-2 border-b pb-1 font-black">
-            <span>Benefit (Mb): <span id="mb_txt">0.00</span> ft</span>
-            <span>Percentage (Mbp): <span id="mbp_txt">0.00</span>%</span>
-        </div>
-
-        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center shadow-inner border border-slate-200">
-            <div class="flex gap-6">
-                <div class="text-center border-r pr-6 border-slate-300">
-                    <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Total Pcs</p>
-                    <p id="totalPcs" class="text-xl font-bold font-black text-slate-700">0</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Total Sft</p>
-                    <p id="totalSft" class="text-xl font-bold font-black text-blue-900">0.00</p>
-                </div>
-            </div>
-            <div class="text-right">
-                <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Grand Total</p>
-                <p id="grandTotal" class="text-3xl font-black text-blue-900 tracking-tighter">₹0</p>
-            </div>
-        </div>
-        <p id="wordSum" class="text-[10px] font-bold italic text-gray-600 mt-2 uppercase font-black">Zero Rupees Only</p>
+    <!-- Summary -->
+    <!-- Summary Section Updated -->
+<div class="p-6">
+    <!-- ১. ডাইনামিক ডিটেইলস বক্স (মোড অনুযায়ী চেঞ্জ হবে) -->
+    <div id="ls-summary-box" class="flex gap-4 italic text-[10px] font-bold text-gray-400 mb-2 border-b pb-1">
+        <span id="ls_txt">LS: 0/0.00</span> 
+        <span id="us_txt">US: 0/0.00</span> 
+        <span id="bs_txt">BS: 0/0.00</span>
+    </div>
+    
+    <div id="factory-summary-box" class="hidden flex gap-4 italic text-[10px] font-bold text-blue-600 mb-2 border-b pb-1 font-black">
+        <span>Benefit (Mb): <span id="mb_txt">0.00</span> ft</span>
+        <span>Percentage (Mbp): <span id="mbp_txt">0.00</span>%</span>
     </div>
 
-    <!-- Final Sticky Buttons -->
+    <!-- ২. মাস্টার সামারি বক্স (Pcs, Sft, Total) -->
+    <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center shadow-inner border border-slate-200">
+        <div class="flex gap-6">
+            <!-- Total Pcs -->
+            <div class="text-center border-r pr-6 border-slate-300">
+                <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Total Pcs</p>
+                <p id="totalPcs" class="text-xl font-bold font-black text-slate-700">0</p>
+            </div>
+            <!-- Total Sft -->
+            <div class="text-center">
+                <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Total Sft</p>
+                <p id="totalSft" class="text-xl font-bold font-black text-blue-900">0.00</p>
+            </div>
+        </div>
+        <!-- Grand Total -->
+        <div class="text-right">
+            <p class="text-[8px] font-bold text-gray-400 uppercase font-black">Grand Total</p>
+            <p id="grandTotal" class="text-3xl font-black text-blue-900 tracking-tighter">₹0</p>
+        </div>
+    </div>
+    
+    <!-- কথায় টাকা -->
+    <p id="wordSum" class="text-[10px] font-bold italic text-gray-600 mt-2 uppercase font-black">Zero Rupees Only</p>
+</div>
+
     <div class="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto bg-white/90 p-4 flex gap-3 no-print z-[100] border-t shadow-2xl">
-        <button onclick="saveRecord()" id="saveBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl text-xs uppercase font-black shadow-lg">Save Data</button>
-        <button onclick="prepareAndPrint()" class="flex-1 bg-black text-white font-bold py-3 rounded-xl text-xs uppercase font-black shadow-lg">Print PDF</button>
-        <button onclick="toggleHistory()" class="bg-orange-500 text-white px-4 rounded-xl font-bold text-xs uppercase font-black shadow-lg">📜 Records</button>
+        <button onclick="saveRecord()" id="saveBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl text-xs uppercase font-black">Save Data</button>
+        <button onclick="prepareAndPrint()" class="flex-1 bg-black text-white font-bold py-3 rounded-xl text-xs uppercase font-black">Print PDF</button>
+        <button onclick="toggleHistory()" class="bg-orange-500 text-white px-4 rounded-xl font-bold text-xs uppercase font-black">📜 History</button>
     </div>
 </div>
 
 <!-- SIDEBARS -->
 <div id="history-panel" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-[150] translate-x-full transition-transform duration-500 no-print overflow-y-auto p-4">
     <div class="flex justify-between items-center mb-4 font-black uppercase text-sm"><h2>Records</h2><button onclick="toggleHistory()" class="text-2xl">×</button></div>
-    <input type="number" id="hSearch" placeholder="Search Customer Phone" class="w-full border-2 p-3 rounded-xl mb-4 font-bold outline-none border-blue-500" oninput="searchHistory()">
-    <div id="hList" class="space-y-3 pb-20"></div>
+    <input type="number" id="hSearch" placeholder="Search Customer Mobile" class="w-full border-2 p-3 rounded-xl mb-4 font-bold outline-none border-blue-500" oninput="searchHistory()">
+    <div id="hList" class="space-y-3"></div>
 </div>
 
 <div id="admin-panel" class="fixed inset-0 bg-white z-[300] hidden p-6 overflow-y-auto no-print">
-    <div class="flex justify-between items-center border-b pb-4 mb-6 uppercase font-black"><h2>Admin Panel</h2><button onclick="document.getElementById('admin-panel').classList.add('hidden')" class="bg-red-500 text-white px-4 py-1 rounded text-xs font-black">EXIT</button></div>
+    <div class="flex justify-between items-center border-b pb-4 mb-6 uppercase font-black"><h2>Admin Panel</h2><button onclick="document.getElementById('admin-panel').classList.add('hidden')" class="bg-red-500 text-white px-4 py-1 rounded text-xs">EXIT</button></div>
     <div id="admin-list" class="space-y-4"></div>
 </div>
 
-<!-- Customer Modal -->
-<div id="customer-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-[300] flex items-center justify-center p-4 no-print text-center">
-    <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-        <h3 class="text-xl font-black text-gray-800 uppercase italic mb-6">Customer Details</h3>
-        <input type="text" id="modal-name" placeholder="Customer Name" class="w-full border-2 p-3 rounded-2xl outline-none font-black mb-4">
-        <input type="number" id="modal-phone" placeholder="10 Digit Mobile No" class="w-full border-2 p-3 rounded-2xl outline-none font-black mb-6">
-        <div class="flex gap-2">
-            <button onclick="closeCustomerModal()" class="flex-1 py-3 text-gray-500 font-black text-xs uppercase">Cancel</button>
-            <button onclick="confirmAndSave()" class="flex-1 py-3 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl">Save Cloud</button>
+    <!-- Smart Customer Info Modal -->
+<div id="customer-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-[300] flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-scaleIn">
+        <div class="text-center mb-6">
+            <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="text-2xl">👤</span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">Customer Details</h3>
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">সেভ করার আগে তথ্যগুলো নিশ্চিত করুন</p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Party Name</label>
+                <input type="text" id="modal-name" placeholder="Enter Name" class="w-full border-2 p-3 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Phone Number</label>
+                <input type="number" id="modal-phone" placeholder="Enter 10 Digit Number" class="w-full border-2 p-3 rounded-2xl outline-none focus:border-blue-600 font-bold transition-all">
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-8">
+            <button onclick="closeCustomerModal()" class="flex-1 py-3 text-gray-500 font-bold text-xs uppercase hover:bg-gray-100 rounded-2xl transition">Cancel</button>
+            <button onclick="confirmAndSave()" class="flex-1 py-3 bg-blue-600 text-white font-bold text-xs uppercase rounded-2xl shadow-lg hover:bg-blue-700 active:scale-95 transition">Confirm & Save</button>
         </div>
     </div>
 </div>
 
-<script>
-// --- 1. FIREBASE & AUTH LOGIC ---
-let isOthers = false;
-let uPhone = localStorage.getItem('uPhone');
-let uDevId = localStorage.getItem('uDevId') || Math.random().toString(36).substring(7);
-if(!localStorage.getItem('uDevId')) localStorage.setItem('uDevId', uDevId);
+<style>
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
+</style>
 
+    /* তারিখের পাশের ডিফল্ট অ্যারো বা ক্যালেন্ডার আইকন লুকানোর জন্য */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+/* ফায়ারফক্স বা অন্যান্য ব্রাউজারের জন্য বাড়তি সুরক্ষা */
+input[type="date"] {
+    appearance: none;
+    -moz-appearance: none;
+}
+
+<script>
+// --- GLOBAL ---
+let isOthers = false;
+let currentUPhone = localStorage.getItem('uPhone');
+let currentUDevId = localStorage.getItem('uDevId') || Math.random().toString(36).substring(7);
+if(!localStorage.getItem('uDevId')) localStorage.setItem('uDevId', currentUDevId);
+
+// --- FIREBASE INIT ---
 const firebaseConfig = {
     apiKey: "AIzaSyAQtkVNXuADha7ek5bqh_REfEkdYpXdNgM",
     authDomain: "invoice-b26b4.firebaseapp.com",
@@ -223,47 +247,27 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// অ্যাডমিন ম্যাজিক লিঙ্ক লিসেনার
-(async function() {
-    const params = new URLSearchParams(window.location.search);
-    if(params.has('approve')) {
-        const phone = params.get('approve'), pid = params.get('pid'), days = parseInt(params.get('days')), dev = params.get('dev');
-        const pass = prompt(`Approve Account for ${phone}?\nEnter Admin Password:`);
-        if(pass === ADMIN_PASS) {
-            const exp = new Date(); exp.setDate(exp.getDate() + days);
-            await db.collection("users").doc(phone).set({ expiry: exp.toISOString(), deviceId: dev }, {merge:true});
-            await db.collection("pending").doc(pid).update({status: 'approved'});
-            alert("SUCCESS! User Activated."); window.location.href = window.location.origin;
-        } else { alert("Wrong Password!"); window.location.href = window.location.origin; }
-    }
-})();
-
-if(uPhone) validateUser();
+if(currentUPhone) validateUser();
 
 async function handleLogin() {
     const p = document.getElementById('userPhone').value;
-    if(p.length < 10) return alert("১০ ডিজিটের সঠিক নম্বর দিন");
-    uPhone = p;
+    if(p.length < 10) return alert("Enter valid 10-digit phone");
+    currentUPhone = p;
     localStorage.setItem('uPhone', p);
     validateUser();
 }
 
 async function validateUser() {
-    const doc = await db.collection("users").doc(uPhone).get();
+    const doc = await db.collection("users").doc(currentUPhone).get();
     if(doc.exists) {
         const d = doc.data();
-        if(d.deviceId && d.deviceId !== uDevId) {
-            alert("⚠️ Account Switch! অন্য ফোনে লগইন ছিল, এটি এখন প্রধান ডিভাইস।");
-            await db.collection("users").doc(uPhone).update({deviceId: uDevId});
+        if(d.deviceId && d.deviceId !== currentUDevId) {
+            alert("⚠️ Switching device...");
+            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
         } else if(!d.deviceId) {
-            await db.collection("users").doc(uPhone).update({deviceId: uDevId});
+            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
         }
-        if(new Date(d.expiry) < new Date()) showPaymentUI();
-        else {
-            unlockApp();
-            // অ্যাডমিন বাটন শো (শুধুমাত্র অ্যাডমিন নম্বরের জন্য)
-            if(uPhone === ADMIN_WHATSAPP.replace('91','')) document.getElementById('adminBtn').classList.remove('hidden');
-        }
+        if(new Date(d.expiry) < new Date()) showPaymentUI(); else unlockApp();
     } else { showPaymentUI(); }
 }
 
@@ -280,11 +284,11 @@ function showPaymentUI() {
 function logout() { localStorage.clear(); location.reload(); }
 
 function prepPay(base, days) {
-    const last3 = uPhone.slice(-3);
+    const last3 = currentUPhone.slice(-3);
     const unique = (base - 1) + (last3 / 1000);
     document.getElementById('uniqueAmt').innerText = unique.toFixed(3);
-    const upiUrl = `upi://pay?pa=${ADMIN_UPI}&pn=InvoicePro&am=${unique.toFixed(3)}&cu=INR&tn=ERP_Sub_${uPhone}`;
-    document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
+    const upiLink = `upi://pay?pa=${ADMIN_UPI}&pn=GranitePro&am=${unique.toFixed(3)}&cu=INR&tn=Plan_${days}`;
+    document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
     document.getElementById('qr-area').classList.remove('hidden');
     window.tempDays = days;
 }
@@ -292,155 +296,313 @@ function prepPay(base, days) {
 async function submitPayWithImgBB() {
     const file = document.getElementById('payFile').files[0];
     const amt = document.getElementById('uniqueAmt').innerText;
-    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন!");
-    const btn = document.getElementById('payBtn'); btn.innerText = "Processing..."; btn.disabled = true;
+    if(!file) return alert("Select screenshot");
 
-    const formData = new FormData(); formData.append("image", file);
+    const btn = document.getElementById('payBtn');
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append("image", file);
 
     try {
         const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
         const resData = await res.json();
+
         if (resData.success) {
-            const screenLink = resData.data.url;
+            const screenLink = resData.data.url; // ইমেজের লিঙ্ক
+            
+            // ফায়ারবেসে ডাটা সেভ
             const docRef = await db.collection("pending").add({
-                phone: uPhone, amount: amt, days: window.tempDays, screenshot: screenLink, 
-                status: 'pending', deviceId: uDevId, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                phone: uPhone,
+                amount: amt,
+                days: window.tempDays,
+                screenshot: screenLink,
+                status: 'pending',
+                deviceId: uDevId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            const currentUrl = window.location.origin + window.location.pathname;
+            // এডমিনের জন্য এক ক্লিকে অ্যাপ্রুভ করার লিঙ্ক তৈরি
+            const currentUrl = window.location.href.split('?')[0]; // মেইন ডোমেইন লিঙ্ক
             const magicLink = `${currentUrl}?approve=${uPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
-            const msg = `⚡ *Payment Alert* ⚡%0A📱 *User:* ${uPhone}%0A💰 *Amt:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Activate Account:* ${magicLink}`;
+
+            // হোয়াটসঅ্যাপ মেসেজ ফরম্যাট
+            const msg = `⚡ *New Payment Alert* ⚡%0A--------------------------%0A📱 *Phone:* ${uPhone}%0A💰 *Amount:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Click to Approve:* ${magicLink}`;
             
             window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
-            alert("সাবমিট হয়েছে! হোয়াটসঅ্যাপ চেক করুন।"); location.reload();
+            alert("Submitted! WhatsApp Open... স্ক্রিনশট পাঠিয়ে দিন।");
+            location.reload();
         }
-    } catch(e) { alert("Upload error"); btn.innerText = "SUBMIT & WHATSAPP"; btn.disabled = false; }
+    } catch(e) { 
+        alert("Upload error"); 
+        btn.innerText = "Submit Payment"; 
+        btn.disabled = false; 
+    }
 }
-
-// --- 2. BILLING & TABLE LOGIC ---
-window.onload = () => { addRow(); document.getElementById('invDate').valueAsDate = new Date(); };
-
+    
 function addRow() {
     const tbody = document.getElementById('billBody');
     const rows = tbody.querySelectorAll('tr');
-    let prevItemName = (rows.length > 0) ? rows[rows.length - 1].querySelector('.item-name').value : "";
+    let prevItemName = "";
 
-    const sl = rows.length + 1, tr = document.createElement('tr');
+    if (rows.length > 0) {
+        prevItemName = rows[rows.length - 1].querySelector('.item-name').value;
+    }
+
+    const sl = rows.length + 1;
+    const tr = document.createElement('tr');
     tr.className = "border-b text-center h-8";
-    const status = prevItemName ? "" : "disabled";
-
     tr.innerHTML = `
         <td class="p-1 border text-[9px] font-black bg-slate-50">${sl}</td>
         <td class="border"><input type="text" onkeydown="handleNav(event)" oninput="checkRow(this)" placeholder="Item" class="table-input item-name font-bold" value="${prevItemName}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${status} class="table-input l-val ${isOthers?'hidden':''}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${status} class="table-input w-val ${isOthers?'hidden':''}"></td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${status} class="table-input q-val font-bold" value="1"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input l-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" ondblclick="copyUp(this)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input w-val ${isOthers?'hidden':''}"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input q-val font-bold" value="1"></td>
         <td class="border bg-slate-50 font-black sft-val text-blue-900">0.00</td>
-        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${status} class="table-input r-val font-black text-blue-700"></td>
+        <td class="border"><input type="number" onkeydown="handleNav(event)" oninput="calculateAll()" ${prevItemName ? '' : 'disabled'} class="table-input r-val font-black text-blue-700"></td>
         <td class="border bg-slate-50 font-black amt-val text-slate-800">0.00</td>
         <td class="border no-print"><button onclick="this.closest('tr').remove(); calculateAll();" class="text-red-500 font-bold">×</button></td>
     `;
-    tbody.appendChild(tr); calculateAll();
+    tbody.appendChild(tr);
+    // এখানে calculateAll() কল করার দরকার নেই, এতে লুপ হওয়ার ভয় থাকে না
 }
 
-function handleNav(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        const inputs = Array.from(document.querySelectorAll('#billBody input:not([disabled])'));
-        const idx = inputs.indexOf(e.target);
-        if (idx < inputs.length - 1) inputs[idx + 1].focus();
+function prepareAndPrint() {
+    const rows = document.querySelectorAll('#billBody tr');
+    let printSl = 1; // প্রিন্ট কপিতে সিরিয়াল ১ থেকে শুরু করার জন্য
+
+    rows.forEach((row) => {
+        // এই রো-র অ্যামাউন্ট কত তা দেখা হচ্ছে (amt-val ক্লাস থেকে)
+        const amtCell = row.querySelector('.amt-val');
+        if (amtCell) {
+            // লেখা থেকে টাকা চিহ্ন বা কমা সরিয়ে শুধু সংখ্যায় রূপান্তর
+            const amtText = amtCell.innerText.replace(/[^\d.-]/g, ''); 
+            const amount = parseFloat(amtText) || 0;
+
+            // সলিড কন্ডিশন: অ্যামাউন্ট অবশ্যই ০ এর বেশি হতে হবে
+            if (amount > 0) {
+                row.classList.remove('no-print');
+                // প্রিন্ট কপিতে সিরিয়াল নম্বর ঠিক করা (১, ২, ৩...)
+                row.cells[0].innerText = printSl++;
+            } else {
+                // অ্যামাউন্ট ০ হলে বা অসম্পূর্ণ রো হলে সেটি হাইড হবে
+                row.classList.add('no-print');
+            }
+        }
+    });
+
+    // সাময়িকভাবে কিছু বাটন এবং অপ্রয়োজনীয় এলিমেন্ট হাইড করা (নিশ্চিত হওয়ার জন্য)
+    document.querySelector('.no-print').style.display = 'none';
+
+    // প্রিন্ট কমান্ড
+    window.print();
+
+    // প্রিন্ট শেষ হওয়ার পর ব্রাউজারে আবার সব রো আগের মতো ফিরিয়ে আনা
+    setTimeout(() => {
+        rows.forEach((row, index) => {
+            row.classList.remove('no-print');
+            row.cells[0].innerText = index + 1; // আসল সিরিয়াল নম্বর ফিরিয়ে আনা
+        });
+    }, 1000);
+}
+// ১. ম্যানুয়ালি রো অ্যাড করার ফাংশন
+function manualAddRow() {
+    const tbody = document.getElementById('billBody');
+    const lastRow = tbody.lastElementChild;
+
+    if (lastRow) {
+        const name = lastRow.querySelector('.item-name').value.trim();
+        const L = parseFloat(lastRow.querySelector('.l-val').value) || 0;
+        const W = parseFloat(lastRow.querySelector('.w-val').value) || 0;
+        const mode = document.getElementById('mode').value;
+
+        // চেক করা হচ্ছে মাপ বা নাম ফাঁকা আছে কি না
+        let isIncomplete = false;
+        if (name === "") isIncomplete = true;
+        
+        if (mode !== 'others' && !isOthers) {
+            if (L <= 0 || W <= 0) isIncomplete = true;
+        }
+
+        if (isIncomplete) {
+            alert("আগের ঘরগুলো সঠিকভাবে ফিলাপ করুন (রেট বাদে সব ঘর জরুরি)");
+            return; // নতুন রো তৈরি হবে না
+        }
     }
+    
+    // সব ঠিক থাকলে নতুন রো তৈরি হবে
+    addRow(); 
+    // নতুন রো-র প্রথম বক্সে ফোকাস করা
+    setTimeout(() => {
+        tbody.lastElementChild.querySelector('.item-name').focus();
+    }, 50);
 }
 
-function checkRow(i) {
-    const r = i.closest('tr'), hasVal = i.value.trim() !== "";
-    r.querySelectorAll('input').forEach(input => input.removeAttribute('disabled'));
-    if(!hasVal) r.querySelectorAll('input:not(.item-name)').forEach(input => input.setAttribute('disabled', 'true'));
+// ২. calculateAll ফাংশন থেকে অটো-অ্যাড অংশটি মুছে দিন
+// আপনার calculateAll ফাংশনের ভেতর থেকে নিচের অংশটুকু ডিলিট করে দিন:
+/*
+if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
+    setTimeout(() => { addRow(); }, 100);
 }
+*/
 
-function copyUp(i) {
-    const prev = i.closest('tr').previousElementSibling;
-    if (prev) {
-        const idx = i.parentElement.cellIndex, prevInput = prev.cells[idx].querySelector('input');
-        if (prevInput && prevInput.value !== "") { i.value = prevInput.value; calculateAll(); }
-    }
+// ৩. প্রিন্ট লজিক আপডেট (রেট ছাড়াও মাপ থাকলে প্রিন্ট হবে)
+function prepareAndPrint() {
+    const rows = document.querySelectorAll('#billBody tr');
+    let printSl = 1;
+
+    rows.forEach((row) => {
+        const sftText = row.querySelector('.sft-val').innerText;
+        const sft = parseFloat(sftText) || 0;
+        const name = row.querySelector('.item-name').value.trim();
+        const Q = parseFloat(row.querySelector('.q-val').value) || 0;
+
+        // কন্ডিশন: মাপ (Sft) ০ এর বেশি অথবা (Others মোডে নাম ও পিস থাকলে) প্রিন্ট হবে
+        if (sft > 0 || (isOthers && name !== "" && Q > 0)) {
+            row.classList.remove('no-print');
+            row.cells[0].innerText = printSl++;
+        } else {
+            row.classList.add('no-print');
+        }
+    });
+
+    window.print();
+
+    setTimeout(() => {
+        rows.forEach((row, index) => {
+            row.classList.remove('no-print');
+            row.cells[0].innerText = index + 1;
+        });
+    }, 1000);
 }
 
 function calculateAll() {
     const rows = document.querySelectorAll('#billBody tr');
-    let tS = 0, tA = 0, tP = 0, rawTS = 0;
+    let tS = 0, tA = 0, tP = 0, rawTS = 0; // tP = Total Pcs (নতুন)
     let ls_s = 0, ls_p = 0, us_s = 0, us_p = 0, bs_s = 0, bs_p = 0;
+    
+    const mode = document.getElementById('mode').value;
+    const LS = parseFloat(document.getElementById('ls_val').value) || 0;
+    const US = parseFloat(document.getElementById('us_val').value) || 0;
+    const BS = parseFloat(document.getElementById('bs_val').value) || 0;
+    const LL = parseFloat(document.getElementById('lLess').value) || 0;
+    const WL = parseFloat(document.getElementById('wLess').value) || 0;
 
-    const mode = document.getElementById('mode').value, LS = parseFloat(document.getElementById('ls_val').value) || 0, US = parseFloat(document.getElementById('us_val').value) || 0, BS = parseFloat(document.getElementById('bs_val').value) || 0, LL = parseFloat(document.getElementById('lLess').value) || 0, WL = parseFloat(document.getElementById('wLess').value) || 0;
+    rows.forEach((r, i) => {
+        const n = r.querySelector('.item-name').value;
+        const L = parseFloat(r.querySelector('.l-val').value) || 0;
+        const W = parseFloat(r.querySelector('.w-val').value) || 0;
+        const Q = parseFloat(r.querySelector('.q-val').value) || 0;
+        const R = parseFloat(r.querySelector('.r-val').value) || 0;
 
-    rows.forEach((r) => {
-        const n = r.querySelector('.item-name').value, L = parseFloat(r.querySelector('.l-val').value) || 0, W = parseFloat(r.querySelector('.w-val').value) || 0, Q = parseFloat(r.querySelector('.q-val').value) || 0, R = parseFloat(r.querySelector('.r-val').value) || 0;
         let sft = 0;
+        let actualRawSft = (L * W * Q) / 144;
+
         if(isOthers) {
-            r.querySelector('.sft-val').innerText = "-"; const amt = Q * R; r.querySelector('.amt-val').innerText = amt.toFixed(2);
-            if(amt > 0) { tA += amt; tP += Q; }
+            // --- Others মোড লজিক ---
+            r.querySelector('.sft-val').innerText = "-";
+            const amt = Q * R;
+            r.querySelector('.amt-val').innerText = amt.toFixed(2);
+            if(amt > 0) {
+                tA += amt;
+                tP += Q; // Others মোডে পিস যোগ করা
+            }
         } else {
+            // --- Granite/Marble মোড লজিক ---
             sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
-            const amt = sft * R; r.querySelector('.sft-val').innerText = sft.toFixed(2); r.querySelector('.amt-val').innerText = amt.toFixed(2);
+            const amt = sft * R;
+            r.querySelector('.sft-val').innerText = sft.toFixed(2);
+            r.querySelector('.amt-val').innerText = amt.toFixed(2);
+
             if(sft > 0) {
-                tS += sft; tA += amt; tP += Q; rawTS += (L * W * Q / 144);
-                if(L >= LS) { ls_s += sft; ls_p++; } else if(L >= US) { us_s += sft; us_p++; } else if(L >= BS) { bs_s += sft; bs_p++; }
+                tS += sft;
+                tA += amt;
+                tP += Q; // পিস যোগ করা
+                rawTS += actualRawSft; // ফ্যাক্টরি বেনিফিটের জন্য আসল মাপ রাখা
+
+                // Custom Range (LS/US/BS) বিভাজন
+                if(L >= LS) { ls_s += sft; ls_p += Q; }
+                else if(L >= US) { us_s += sft; us_p += Q; }
+                else if(L >= BS) { bs_s += sft; bs_p += Q; }
             }
         }
     });
-    document.getElementById('totalPcs').innerText = tP; document.getElementById('totalSft').innerText = tS.toFixed(2); document.getElementById('grandTotal').innerText = '₹' + Math.round(tA);
-    document.getElementById('ls_txt').innerText = `LS: ${ls_p}/${ls_s.toFixed(2)}`; document.getElementById('us_txt').innerText = `US: ${us_p}/${us_s.toFixed(2)}`; document.getElementById('bs_txt').innerText = `BS: ${bs_p}/${bs_s.toFixed(2)}`;
+
+    // --- UI আপডেট সেকশন ---
+    
+    // ১. মেইন সামারি (Pcs, Sft, Grand Total)
+    const pcsDisplay = document.getElementById('totalPcs');
+    if(pcsDisplay) pcsDisplay.innerText = tP; // Total Pcs আপডেট
+    
+    document.getElementById('totalSft').innerText = tS.toFixed(2);
+    document.getElementById('grandTotal').innerText = '₹' + Math.round(tA);
+
+    // ২. LS, US, BS টেক্সট আপডেট
+    document.getElementById('ls_txt').innerText = `LS: ${ls_p}/${ls_s.toFixed(2)}`;
+    document.getElementById('us_txt').innerText = `US: ${us_p}/${us_s.toFixed(2)}`;
+    document.getElementById('bs_txt').innerText = `BS: ${bs_p}/${bs_s.toFixed(2)}`;
+
+    // ৩. Factory Mode বেনিফিট (Mb/Mbp) আপডেট
     if(mode === 'factory') {
-        const MB = rawTS - tS, MBP = rawTS > 0 ? (MB / rawTS) * 100 : 0;
-        document.getElementById('mb_txt').innerText = MB.toFixed(2); document.getElementById('mbp_txt').innerText = MBP.toFixed(2);
+        const MB = rawTS - tS;
+        const MBP = rawTS > 0 ? (MB / rawTS) * 100 : 0;
+        const mbDisplay = document.getElementById('mb_txt');
+        const mbpDisplay = document.getElementById('mbp_txt');
+        if(mbDisplay) mbDisplay.innerText = MB.toFixed(2);
+        if(mbpDisplay) mbpDisplay.innerText = MBP.toFixed(2);
     }
+
+    // ৪. কথায় টাকা আপডেট
     updateWords(Math.round(tA));
 }
-
-// --- 3. PRINT & SAVE LOGIC ---
-function prepareAndPrint() {
-    const rows = document.querySelectorAll('#billBody tr'); let sl = 1;
-    rows.forEach((row) => {
-        const amt = parseFloat(row.querySelector('.amt-val').innerText.replace(/[^\d.-]/g, '')) || 0;
-        const sft = parseFloat(row.querySelector('.sft-val').innerText) || 0;
-        if (amt > 0 || sft > 0) { row.classList.remove('no-print'); row.cells[0].innerText = sl++; } else { row.classList.add('no-print'); }
-    });
-    window.print();
-    setTimeout(() => { rows.forEach((row, i) => { row.classList.remove('no-print'); row.cells[0].innerText = i + 1; }); }, 1000);
-}
-
-function manualAddRow() {
-    const last = document.getElementById('billBody').lastElementChild;
-    if (last && last.querySelector('.item-name').value.trim() === "") return alert("আইটেম নাম আগে লিখুন");
-    addRow();
+function updateWords(n) {
+    const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
+    const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
+    function inWords (num) {
+        if ((num = num.toString()).length > 9) return 'Overflow';
+        const m = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!m) return ''; var str = '';
+        str += (m[1] != 0) ? (a[Number(m[1])] || b[m[1][0]] + ' ' + a[m[1][1]]) + 'Crore ' : '';
+        str += (m[2] != 0) ? (a[Number(m[2])] || b[m[2][0]] + ' ' + a[m[2][1]]) + 'Lakh ' : '';
+        str += (m[3] != 0) ? (a[Number(m[3])] || b[m[3][0]] + ' ' + a[m[3][1]]) + 'Thousand ' : '';
+        str += (m[4] != 0) ? (a[Number(m[4])] || b[m[4][0]] + ' ' + a[m[4][1]]) + 'Hundred ' : '';
+        str += (m[5] != 0) ? (a[Number(m[5])] || b[m[5][0]] + ' ' + a[m[5][1]]) + 'Rupees Only' : 'Rupees Only';
+        return str;
+    }
+    document.getElementById('wordSum').innerText = n > 0 ? inWords(n) : "Zero Rupees Only";
 }
 
 async function saveRecord() {
-    if(document.getElementById('partyPhone').value.length < 10) return openCustomerModal();
-    executeActualSave();
-}
-
-async function executeActualSave() {
-    const btn = document.getElementById('saveBtn'); btn.innerText = "Cloud Saving...";
+    const cP = document.getElementById('partyPhone').value;
+    if(cP.length < 10) return alert("Customer Phone required");
+    const btn = document.getElementById('saveBtn');
+    btn.innerText = "Saving...";
     const items = [];
     document.querySelectorAll('#billBody tr').forEach(r => {
-        const amt = parseFloat(r.querySelector('.amt-val').innerText) || 0;
-        if(amt > 0) items.push({ n: r.querySelector('.item-name').value, l: r.querySelector('.l-val').value, w: r.querySelector('.w-val').value, q: r.querySelector('.q-val').value, r: r.querySelector('.r-val').value, sft: r.querySelector('.sft-val').innerText });
+        const n = r.querySelector('.item-name').value;
+        if(n) items.push({ n, l: r.querySelector('.l-val').value, w: r.querySelector('.w-val').value, q: r.querySelector('.q-val').value, r: r.querySelector('.r-val').value, sft: r.querySelector('.sft-val').innerText });
     });
-    try {
-        await db.collection("records").add({ owner: uPhone, customer: document.getElementById('partyPhone').value, name: document.getElementById('partyName').value, type: document.getElementById('docBtn').innerText, date: document.getElementById('invDate').value, total: document.getElementById('grandTotal').innerText, items, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        alert("✅ Cloud-এ সেভ হয়েছে!");
-    } catch(e) { alert(e.message); } finally { btn.innerText = "SAVE DATA"; }
+    await db.collection("records").add({
+        owner: currentUPhone, customer: cP, name: document.getElementById('partyName').value,
+        type: document.getElementById('docBtn').innerText, date: document.getElementById('invDate').value,
+        total: document.getElementById('grandTotal').innerText, items, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert("Saved!"); btn.innerText = "SAVE DATA";
 }
 
 async function searchHistory() {
     const p = document.getElementById('hSearch').value;
     if(p.length < 4) return;
-    const snap = await db.collection("records").where("owner", "==", uPhone).where("customer", "==", p).get();
-    const list = document.getElementById('hList'); list.innerHTML = "";
+    const snap = await db.collection("records").where("owner", "==", currentUPhone).where("customer", "==", p).get();
+    const list = document.getElementById('hList');
+    list.innerHTML = "";
     snap.forEach(doc => {
         const d = doc.data();
-        list.innerHTML += `<div class="p-3 bg-blue-50 border-l-4 border-blue-900 rounded shadow-sm"><p class="font-bold text-[10px]">${d.type} | ${d.date}</p><p class="font-black text-sm">${d.name}</p><button onclick="loadRec('${doc.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] mt-2 font-black">LOAD</button></div>`;
+        list.innerHTML += `<div class="p-3 bg-slate-50 border-l-4 border-blue-900 text-xs shadow-sm rounded-lg">
+            <p class="font-bold">${d.type} | ${d.date}</p><p class="font-bold">${d.name}</p>
+            <button onclick="loadRec('${doc.id}')" class="bg-blue-600 text-white px-3 py-1 rounded mt-2 uppercase font-black">LOAD</button>
+        </div>`;
     });
 }
 
@@ -459,72 +621,191 @@ async function loadRec(id) {
     calculateAll(); toggleHistory();
 }
 
-// --- 4. UTILS & OTHERS ---
+function toggleHistory() { document.getElementById('history-panel').classList.toggle('translate-x-full'); }
+function showAdmin() { if(prompt("Admin Password:") === ADMIN_PASS) { document.getElementById('admin-panel').classList.remove('hidden'); loadAdmin(); } }
+
+async function loadAdmin() {
+    const snap = await db.collection("pending").where("status", "==", "pending").get();
+    const list = document.getElementById('admin-list'); list.innerHTML = "";
+    snap.forEach(doc => {
+        const d = doc.data();
+        list.innerHTML += `<div class="bg-slate-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
+            <div class="text-xs font-bold"><p>Phone: ${d.phone}</p><p>Amt: ₹${d.amount}</p><a href="${d.screenshot}" target="_blank" class="text-blue-600 underline font-black uppercase">View Receipt</a></div>
+            <button onclick="approve('${d.phone}', ${d.days}, '${doc.id}', '${d.deviceId}')" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase font-black">APPROVE</button>
+        </div>`;
+    });
+}
+
+async function approve(phone, days, dId, devId) {
+    const exp = new Date(); exp.setDate(exp.getDate() + days);
+    await db.collection("users").doc(phone).set({ expiry: exp.toISOString(), deviceId: devId }, {merge:true});
+    await db.collection("pending").doc(dId).update({status: 'approved'});
+    alert("Approved!"); loadAdmin();
+}
+
+async function shareApp() {
+    const s = { title: 'Granite Pro', text: 'Best Billing App. My Ref: ' + currentUPhone, url: window.location.href };
+    if (navigator.share) await navigator.share(s); else window.open(`https://wa.me/?text=${encodeURIComponent(s.text + " " + s.url)}`);
+}
+
 function toggleMode() {
     const m = document.getElementById('mode').value;
     document.getElementById('custom-inputs').classList.toggle('hidden', m === 'factory');
     document.getElementById('factory-inputs').classList.toggle('hidden', m === 'custom');
+    
+    // সামারি বক্সগুলোর হাইড/শো লজিক
     document.getElementById('ls-summary-box').classList.toggle('hidden', m === 'factory');
     document.getElementById('factory-summary-box').classList.toggle('hidden', m === 'custom');
+    
     calculateAll();
 }
 
-function toggleOthers() { isOthers = !isOthers; document.getElementById('othersBtn').classList.toggle('bg-red-600', isOthers); document.querySelectorAll('.l-val, .w-val').forEach(el => el.classList.toggle('hidden', isOthers)); calculateAll(); }
-
-function bulkRate() {
-    const r = prompt("সব খালি ঘরে কত রেট বসবে?");
-    if(r) { document.querySelectorAll('.r-val').forEach(i => { if(!i.value) i.value = r; }); calculateAll(); }
+function toggleOthers() {
+    isOthers = !isOthers;
+    document.getElementById('othersBtn').classList.toggle('bg-red-600', isOthers);
+    document.querySelectorAll('.l-val, .w-val').forEach(el => el.classList.toggle('hidden', isOthers));
+    calculateAll();
 }
 
+function bulkRate() {
+    const r = prompt("সব খালি ঘরের জন্য একটি রেট লিখুন:");
+    if(r !== null && r !== "") {
+        document.querySelectorAll('.r-val').forEach(i => {
+            if(!i.value) i.value = r;
+        });
+        calculateAll();
+    }
+}
+    
+function handleNav(e) {
+    if (e.key === "Enter" || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        const inputs = Array.from(document.querySelectorAll('#billBody input:not([disabled])'));
+        const idx = inputs.indexOf(e.target);
+
+        if (e.key === "Enter" || e.key === "ArrowRight") {
+            if (idx < inputs.length - 1) {
+                e.preventDefault();
+                inputs[idx + 1].focus();
+            }
+        } else if (e.key === "ArrowLeft") {
+            if (idx > 0) {
+                e.preventDefault();
+                inputs[idx - 1].focus();
+            }
+        }
+        // ArrowUp এবং Down এর জন্য আপনারা চাইলে আরও লজিক যোগ করতে পারেন
+    }
+}
+
+    function checkRow(i) {
+    const r = i.closest('tr');
+    const hasName = i.value.trim() !== "";
+    // নাম থাকলে ওই রো-র সব ইনপুট খুলে যাবে
+    r.querySelectorAll('input').forEach(input => {
+        input.removeAttribute('disabled');
+    });
+    if(!hasName) {
+        // নাম না থাকলে আবার লক হয়ে যাবে
+        r.querySelectorAll('input:not(.item-name)').forEach(input => input.setAttribute('disabled', 'true'));
+    }
+}
+
+// ১. মডাল ওপেন করার ফাংশন
+function openCustomerModal() {
+    // আগের নাম ও নম্বর যদি থাকে তা মডালে দেখাবে
+    document.getElementById('modal-name').value = document.getElementById('partyName').value;
+    document.getElementById('modal-phone').value = document.getElementById('partyPhone').value;
+    
+    document.getElementById('customer-modal').classList.remove('hidden');
+    document.getElementById('modal-name').focus();
+}
+
+// ২. মডাল বন্ধ করার ফাংশন
+function closeCustomerModal() {
+    document.getElementById('customer-modal').classList.add('hidden');
+}
+
+// ৩. মডাল থেকে তথ্য নিয়ে সেভ করার ফাংশন
+async function confirmAndSave() {
+    const name = document.getElementById('modal-name').value;
+    const phone = document.getElementById('modal-phone').value;
+
+    if(phone.length < 10) {
+        alert("দয়া করে সঠিক ১০ ডিজিটের মোবাইল নম্বর দিন");
+        return;
+    }
+
+    // মডালের ডাটা মেইন ইনপুটে পাঠিয়ে দেওয়া
+    document.getElementById('partyName').value = name;
+    document.getElementById('partyPhone').value = phone;
+
+    closeCustomerModal();
+    
+    // আসল সেভ ফাংশন কল করা (যেটি নিচে আছে)
+    executeActualSave();
+}
+
+// ৪. আপনার আগের saveRecord ফাংশনটি এভাবে আপডেট করুন
+async function saveRecord() {
+    const phone = document.getElementById('partyPhone').value;
+    
+    // যদি ফোন নম্বর না থাকে তবে মডাল খুলবে
+    if(!phone || phone.length < 10) {
+        openCustomerModal();
+    } else {
+        // নম্বর থাকলে সরাসরি সেভ হবে
+        executeActualSave();
+    }
+}
+
+// ৫. ফায়ারবেসে সেভ করার মূল কাজ
+async function executeActualSave() {
+    const btn = document.getElementById('saveBtn');
+    btn.innerText = "Saving to Cloud...";
+    btn.disabled = true;
+
+    const items = [];
+    document.querySelectorAll('#billBody tr').forEach(r => {
+        const n = r.querySelector('.item-name').value;
+        const amt = parseFloat(r.querySelector('.amt-val').innerText) || 0;
+        if(n && amt > 0) {
+            items.push({ 
+                n, 
+                l: r.querySelector('.l-val').value, 
+                w: r.querySelector('.w-val').value, 
+                q: r.querySelector('.q-val').value, 
+                r: r.querySelector('.r-val').value, 
+                sft: r.querySelector('.sft-val').innerText 
+            });
+        }
+    });
+
+    try {
+        await db.collection("records").add({
+            owner: currentUPhone,
+            customer: document.getElementById('partyPhone').value,
+            name: document.getElementById('partyName').value,
+            type: document.getElementById('docBtn').innerText,
+            date: document.getElementById('invDate').value,
+            total: document.getElementById('grandTotal').innerText,
+            items,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("✅ Cloud-এ সফলভাবে সেভ হয়েছে!");
+    } catch(e) { 
+        alert("Error: " + e.message); 
+    } finally {
+        btn.innerText = "SAVE DATA";
+        btn.disabled = false;
+    }
+}
+    
 function cycleDoc() {
     const docs = ['Invoice', 'Estimate', 'Quotation', 'Challan', 'Mistri Bill'];
     let cur = document.getElementById('docBtn').innerText;
     let idx = (docs.indexOf(cur) + 1) % docs.length;
     document.getElementById('docBtn').innerText = docs[idx];
     document.getElementById('mainTitle').innerText = "Granite " + docs[idx];
-}
-
-function toggleHistory() { document.getElementById('history-panel').classList.toggle('translate-x-full'); }
-function showAdmin() { document.getElementById('admin-panel').classList.remove('hidden'); loadAdmin(); }
-function openCustomerModal() { document.getElementById('customer-modal').classList.remove('hidden'); }
-function closeCustomerModal() { document.getElementById('customer-modal').classList.add('hidden'); }
-function confirmAndSave() {
-    document.getElementById('partyName').value = document.getElementById('modal-name').value;
-    document.getElementById('partyPhone').value = document.getElementById('modal-phone').value;
-    closeCustomerModal(); executeActualSave();
-}
-
-async function loadAdmin() {
-    const snap = await db.collection("pending").where("status", "==", "pending").get(), list = document.getElementById('admin-list');
-    list.innerHTML = ""; snap.forEach(doc => {
-        const d = doc.data();
-        list.innerHTML += `<div class="bg-slate-100 p-4 rounded-xl flex justify-between items-center shadow-sm"><div class="text-xs font-bold"><p>User: ${d.phone}</p><p>Amt: ₹${d.amount}</p></div><div class="flex gap-1"><button onclick="window.open('${d.screenshot}')" class="bg-blue-600 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Receipt</button><button onclick="approveAdmin('${d.phone}', ${d.days}, '${doc.id}', '${d.deviceId}')" class="bg-green-600 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Approve</button></div></div>`;
-    });
-}
-async function approveAdmin(p, d, id, dev) {
-    const exp = new Date(); exp.setDate(exp.getDate() + d);
-    await db.collection("users").doc(p).set({ expiry: exp.toISOString(), deviceId: dev }, {merge:true});
-    await db.collection("pending").doc(id).update({status: 'approved'});
-    alert("Approved!"); loadAdmin();
-}
-
-function shareApp() { window.open(`https://wa.me/?text=স্মার্ট গ্রানাইট বিলিং ERP: ${window.location.origin}`); }
-
-function updateWords(n) {
-    const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
-    const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
-    function inWords (num) {
-        if ((num = num.toString()).length > 9) return 'Overflow';
-        const m = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-        if (!m) return ''; var str = '';
-        str += (m[1] != 0) ? (a[Number(m[1])] || b[m[1][0]] + ' ' + a[m[1][1]]) + 'Crore ' : '';
-        str += (m[2] != 0) ? (a[Number(m[2])] || b[m[2][0]] + ' ' + a[m[2][1]]) + 'Lakh ' : '';
-        str += (m[3] != 0) ? (a[Number(m[3])] || b[m[3][0]] + ' ' + a[m[3][1]]) + 'Thousand ' : '';
-        str += (m[4] != 0) ? (a[Number(m[4])] || b[m[4][0]] + ' ' + a[m[4][1]]) + 'Hundred ' : '';
-        str += (m[5] != 0) ? (a[Number(m[5])] || b[m[5][0]] + ' ' + a[m[5][1]]) + 'Rupees Only' : 'Rupees Only';
-        return str;
-    }
-    document.getElementById('wordSum').innerText = n > 0 ? inWords(n) : "Zero Rupees Only";
 }
 </script>
 </body>
