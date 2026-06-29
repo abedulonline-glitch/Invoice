@@ -35,22 +35,28 @@
 <!-- AUTH OVERLAY -->
 <div id="auth-overlay" class="fixed inset-0 bg-blue-950 z-[200] flex items-center justify-center p-4 no-print text-center">
     <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl">
+        
+        <!-- Step 1: ফোন নম্বর এন্ট্রি (এটিই আগে দেখাবে) -->
         <div id="login-box">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 italic">Invoice Pro Login</h2>
+            <div class="text-4xl mb-4">📱</div>
+            <h2 class="text-xl font-bold text-gray-800 mb-6">লগইন করুন</h2>
             <input type="number" id="userPhone" placeholder="Mobile Number" class="w-full border-2 p-4 rounded-2xl mb-4 text-center font-bold text-xl outline-none focus:border-blue-600">
-            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">লগইন করুন</button>
+            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">পরবর্তী ধাপ</button>
         </div>
+
+        <!-- Step 2: পেমেন্ট অপশন (লগইনের পর আসবে) -->
         <div id="payment-box" class="hidden">
-            <h2 class="text-xl font-bold text-red-600 mb-2 uppercase">Subscription Expired</h2>
+            <h2 class="text-xl font-bold text-red-600 mb-2 uppercase">Subscription Required</h2>
+            <p class="text-[10px] font-bold text-gray-400 mb-6">আপনার মেম্বারশিপ প্ল্যান সিলেক্ট করুন</p>
             <div class="grid grid-cols-2 gap-2 mb-4">
                 <button onclick="prepPay(99, 30)" class="border p-3 rounded-xl text-xs font-bold font-black">Monthly ₹99</button>
                 <button onclick="prepPay(999, 365)" class="border p-3 rounded-xl text-xs font-bold font-black">Yearly ₹999</button>
             </div>
             <div id="qr-area" class="hidden">
-                <p class="text-xs font-bold text-green-700">Pay: ₹<span id="uniqueAmt">0</span></p>
+                <p class="text-xs font-bold text-green-700">Unique Pay: ₹<span id="uniqueAmt">0</span></p>
                 <img id="qrImg" src="" class="mx-auto w-40 h-40 border my-2">
-                <input type="file" id="payFile" class="text-[10px] mb-4">
-                <button onclick="submitPayWithWA()" id="payBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-sm">Submit Payment</button>
+                <input type="file" id="payFile" class="text-[10px] mb-4 w-full">
+                <button onclick="submitPayWithImgBB()" id="payBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">প্রোসেসিং ও হোয়াটসঅ্যাপ</button>
             </div>
         </div>
     </div>
@@ -283,11 +289,100 @@ const db = firebase.firestore();
 if(currentUPhone) validateUser();
 
 async function handleLogin() {
+// ১. লগইন হ্যান্ডলার
+async function handleLogin() {
     const p = document.getElementById('userPhone').value;
-    if(p.length < 10) return alert("Enter valid 10-digit phone");
+    if(p.length < 10) return alert("সঠিক ১০ ডিজিটের মোবাইল নম্বর দিন");
+    
+    const btn = document.getElementById('loginBtn');
+    btn.innerText = "ভেরিফাই হচ্ছে...";
+    btn.disabled = true;
+
     currentUPhone = p;
     localStorage.setItem('uPhone', p);
-    validateUser();
+
+    try {
+        const doc = await db.collection("users").doc(p).get();
+        if(doc.exists) {
+            const d = doc.data();
+            // ডিভাইস লক আপডেট (একই নম্বর অন্য ফোনে থাকলে এটি কাজ করবে)
+            await db.collection("users").doc(p).update({ deviceId: uDevId });
+
+            // মেয়াদ চেক করা
+            if(new Date(d.expiry) < new Date()) {
+                showPaymentUI(); // মেয়াদ শেষ হলে পেমেন্ট দেখাবে
+            } else {
+                unlockApp(); // মেয়াদ থাকলে সরাসরি অ্যাপ খুলবে
+            }
+        } else {
+            showPaymentUI(); // নতুন ইউজার হলে পেমেন্ট দেখাবে
+        }
+    } catch(e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.innerText = "পরবর্তী ধাপ";
+        btn.disabled = false;
+    }
+}
+
+function showPaymentUI() {
+    document.getElementById('login-box').classList.add('hidden');
+    document.getElementById('payment-box').classList.remove('hidden');
+}
+
+// ২. পেমেন্ট সাবমিট ও WhatsApp অটো-ওপেন
+async function submitPayWithImgBB() {
+    const file = document.getElementById('payFile').files[0];
+    const amt = document.getElementById('uniqueAmt').innerText;
+    
+    if(!file) return alert("পেমেন্ট স্ক্রিনশট সিলেক্ট করুন");
+
+    const btn = document.getElementById('payBtn');
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+        // ১. ImgBB-তে ইমেজ আপলোড
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
+        const resData = await res.json();
+
+        if (resData.success) {
+            const screenLink = resData.data.url;
+
+            // ২. ফায়ারবেসে পেন্ডিং হিসেবে ডাটা সেভ
+            const docRef = await db.collection("pending").add({
+                phone: currentUPhone,
+                amount: amt,
+                days: window.tempDays,
+                screenshot: screenLink,
+                status: 'pending',
+                deviceId: uDevId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // ৩. এডমিনের ম্যাজিক লিঙ্ক তৈরি
+            const magicLink = `${window.location.origin}/?approve=${currentUPhone}&pid=${docRef.id}&days=${window.tempDays}&dev=${uDevId}`;
+
+            // ৪. হোয়াটসঅ্যাপ মেসেজ রেডি করা
+            const msg = `🚀 *New Plan Request* 🚀%0A--------------------------%0A📱 *User:* ${currentUPhone}%0A💰 *Amt:* ₹${amt}%0A📅 *Plan:* ${window.tempDays} Days%0A🖼️ *Receipt:* ${screenLink}%0A%0A✅ *Admin Approve:* ${magicLink}`;
+            
+            // ৫. অটোমেটিক হোয়াটসঅ্যাপ ওপেন
+            window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, '_blank');
+            
+            alert("আপনার পেমেন্ট রিকোয়েস্ট পাঠানো হয়েছে! হোয়াটসঅ্যাপ ওপেন হচ্ছে...");
+            location.reload(); // অ্যাপ রিফ্রেশ হবে
+        } else {
+            alert("ইমেজ আপলোড ফেইল হয়েছে। আবার চেষ্টা করুন।");
+            btn.disabled = false;
+        }
+    } catch(e) { 
+        alert("Upload error: " + e.message); 
+        btn.innerText = "প্রোসেসিং ও হোয়াটসঅ্যাপ"; 
+        btn.disabled = false; 
+    }
 }
 
 async function validateUser() {
