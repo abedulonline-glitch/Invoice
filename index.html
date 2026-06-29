@@ -502,11 +502,19 @@ function calculateAll() {
             }
         } else {
             // --- Granite/Marble মোড লজিক ---
-            sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
-            const amt = sft * R;
-            r.querySelector('.sft-val').innerText = sft.toFixed(2);
-            r.querySelector('.amt-val').innerText = amt.toFixed(2);
+            // calculateAll এর লুপের ভেতর যেখানে sft বের করেন সেখানে এই শর্তটি দিন:
+let sft = 0;
+const lInput = r.querySelector('.l-val');
 
+if (lInput.classList.contains('invisible')) {
+    // যদি ইনপুট অদৃশ্য থাকে (Others রো), তবে Sft হবে ০
+    sft = 0;
+    r.querySelector('.sft-val').innerText = "-";
+} else {
+    // সাধারণ গ্রানাইট হিসাব
+    sft = (mode === 'factory' && L > 0 && W > 0) ? ((L - LL) * (W - WL) * Q) / 144 : (L * W * Q) / 144;
+    r.querySelector('.sft-val').innerText = sft.toFixed(2);
+}
             if(sft > 0) {
                 tS += sft;
                 tA += amt;
