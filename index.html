@@ -444,34 +444,7 @@ if (isLastRow && n !== "" && Q > 0 && (hasMeasurement || hasRate)) {
 */
 
 // ৩. প্রিন্ট লজিক আপডেট (রেট ছাড়াও মাপ থাকলে প্রিন্ট হবে)
-function prepareAndPrint() {
-    const rows = document.querySelectorAll('#billBody tr');
-    let printSl = 1;
 
-    rows.forEach((row) => {
-        const sftText = row.querySelector('.sft-val').innerText;
-        const sft = parseFloat(sftText) || 0;
-        const name = row.querySelector('.item-name').value.trim();
-        const Q = parseFloat(row.querySelector('.q-val').value) || 0;
-
-        // কন্ডিশন: মাপ (Sft) ০ এর বেশি অথবা (Others মোডে নাম ও পিস থাকলে) প্রিন্ট হবে
-        if (sft > 0 || (isOthers && name !== "" && Q > 0)) {
-            row.classList.remove('no-print');
-            row.cells[0].innerText = printSl++;
-        } else {
-            row.classList.add('no-print');
-        }
-    });
-
-    window.print();
-
-    setTimeout(() => {
-        rows.forEach((row, index) => {
-            row.classList.remove('no-print');
-            row.cells[0].innerText = index + 1;
-        });
-    }, 1000);
-}
 
 function calculateAll() {
     const rows = document.querySelectorAll('#billBody tr');
