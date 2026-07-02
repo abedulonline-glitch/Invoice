@@ -230,11 +230,16 @@ input[type="date"] {
 </style>
 <script>
 // --- GLOBAL ---
-let isOthers = false;
+// --- সঠিক ভেরিয়েবল এবং শুরু ---
 let currentUPhone = localStorage.getItem('uPhone');
 let currentUDevId = localStorage.getItem('uDevId') || Math.random().toString(36).substring(7);
+
 if(!localStorage.getItem('uDevId')) localStorage.setItem('uDevId', currentUDevId);
 
+// পেজ লোড হওয়ার সাথে সাথেই ভেরিফাই করবে
+if(currentUPhone) {
+    setTimeout(() => { validateUser(); }, 500); 
+}
 // --- FIREBASE INIT ---
 const firebaseConfig = {
     apiKey: "AIzaSyAQtkVNXuADha7ek5bqh_REfEkdYpXdNgM",
@@ -257,23 +262,7 @@ async function handleLogin() {
     validateUser();
 }
 
-async function validateUser() {
-    if (uPhone === "9434332264") { 
-        unlockApp();
-        return; 
-    }
-    const doc = await db.collection("users").doc(currentUPhone).get();
-    if(doc.exists) {
-        const d = doc.data();
-        if(d.deviceId && d.deviceId !== currentUDevId) {
-            alert("⚠️ Switching device...");
-            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
-        } else if(!d.deviceId) {
-            await db.collection("users").doc(currentUPhone).update({deviceId: currentUDevId});
-        }
-        if(new Date(d.expiry) < new Date()) showPaymentUI(); else unlockApp();
-    } else { showPaymentUI(); }
-}
+
 
 function unlockApp() {
     document.getElementById('auth-overlay').classList.add('hidden');
@@ -609,26 +598,61 @@ function bulkRate() {
     }
 }
     
-function handleNav(e) {
-    if (e.key === "Enter" || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        const inputs = Array.from(document.querySelectorAll('#billBody input:not([disabled])'));
-        const idx = inputs.indexOf(e.target);
-
-        if (e.key === "Enter" || e.key === "ArrowRight") {
-            if (idx < inputs.length - 1) {
-                e.preventDefault();
-                inputs[idx + 1].focus();
-            }
-        } else if (e.key === "ArrowLeft") {
-            if (idx > 0) {
-                e.preventDefault();
-                inputs[idx - 1].focus();
-            }
-        }
-        // ArrowUp এবং Down এর জন্য আপনারা চাইলে আরও লজিক যোগ করতে পারেন
-    }
+// ১. লগইন হ্যান্ডলার (বাটন ক্লিক করলে যা হয়)
+async function handleLogin() {
+    const p = document.getElementById('userPhone').value;
+    if(p.length < 10) return alert("সঠিক ১০ ডিজিটের মোবাইল নম্বর দিন");
+    
+    currentUPhone = p; // ভেরিয়েবল সেট করা হলো
+    localStorage.setItem('uPhone', p); // মেমোরিতে সেভ করা হলো
+    
+    validateUser(); // এবার ভেরিফাই করতে পাঠানো হলো
 }
 
+// ২. মেম্বারশিপ এবং ডিভাইস ভেরিফিকেশন
+async function validateUser() {
+    const btn = document.getElementById('loginBtn');
+    if(btn) {
+        btn.innerText = "Checking...";
+        btn.disabled = true;
+    }
+
+    try {
+        // ফায়ারবেস থেকে ওই নম্বরের ডাটা খোঁজা হচ্ছে
+        const doc = await db.collection("users").doc(currentUPhone).get();
+        
+        if(doc.exists) {
+            const d = doc.data();
+            
+            // ডিভাইস লক লজিক: অন্য ডিভাইসে থাকলে আপডেট করে নেবে
+            if(d.deviceId && d.deviceId !== currentUDevId) {
+                alert("⚠️ অন্য ডিভাইসে লগইন ছিল, এখন এই ফোনটিই আপনার প্রধান ডিভাইস।");
+                await db.collection("users").doc(currentUPhone).update({ deviceId: currentUDevId });
+            } else if(!d.deviceId) {
+                await db.collection("users").doc(currentUPhone).update({ deviceId: currentUDevId });
+            }
+
+            // মেয়াদ শেষ কি না চেক করা (Expiry Check)
+            const expiryDate = new Date(d.expiry);
+            const today = new Date();
+
+            if(expiryDate < today) {
+                showPaymentUI(); // মেয়াদ শেষ
+            } else {
+                unlockApp(); // সব ঠিক থাকলে অ্যাপ খুলে যাবে
+            }
+        } else {
+            // নতুন ইউজার হলে পেমেন্ট দেখাবে
+            showPaymentUI();
+        }
+    } catch(e) {
+        alert("ফায়ারবেস কানেকশন এরর: " + e.message);
+        if(btn) {
+            btn.innerText = "লগইন";
+            btn.disabled = false;
+        }
+    }
+}
     function checkRow(i) {
     const r = i.closest('tr');
     const hasName = i.value.trim() !== "";
